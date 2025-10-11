@@ -216,19 +216,23 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             opening_balance = first_balance - first_amount
         else:
             opening_balance = first_balance - first_amount  # amount is already negative
-    else:
-        # Format 1 (UATL): Has Credit/Debit column
-        # Check if amounts are signed (CSV) or unsigned (PDF)
-        # CSV Format 1: fees=0 (included), amounts signed
-        # PDF Format 1: fees separate, amounts unsigned
+    elif pdf_format == 1:
+        # Format 1: Check if amounts are signed (CSV) or unsigned (PDF)
         first_direction = str(df.iloc[0].get('txn_direction', '')).lower()
-        if first_fee == 0 and first_amount < 0:
-            # CSV with signed amounts: just subtract the signed amount
-            opening_balance = first_balance - first_amount
-        elif first_direction == 'credit':
+        # CSV has signed amounts (negative for debits), PDF has unsigned amounts
+        # Detect by checking if debit has negative amount or credit has positive amount
+        if (first_direction == 'dr' and first_amount < 0) or (first_direction == 'cr' and first_amount > 0):
+            # CSV: amounts are signed, subtract amount and fee
             opening_balance = first_balance - first_amount - first_fee
         else:
-            opening_balance = first_balance + first_amount + first_fee
+            # PDF: amounts are unsigned, use direction
+            if first_direction == 'credit':
+                opening_balance = first_balance - first_amount - first_fee
+            else:
+                opening_balance = first_balance + first_amount + first_fee
+    else:
+        # Fallback
+        opening_balance = first_balance - first_amount
 
     # Calculate running balance
     running_balance = opening_balance
@@ -239,22 +243,27 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
         row = df.iloc[idx]
 
         if pdf_format == 2:
-            # Format 2: Just add signed amount
+            # Format 2: Amount is signed, just add it
             running_balance += row['amount']
         elif provider_code == 'UMTN':
-            # UMTN: Amount determines direction (positive=credit, negative=debit)
+            # UMTN: Amount is signed (positive=credit, negative=debit)
             running_balance += row['amount']
-        else:
-            # Format 1 (UATL): Has Credit/Debit column
-            # Check if amounts are signed (CSV) or unsigned (PDF)
+        elif pdf_format == 1:
+            # Format 1: Check if amounts are signed (CSV) or unsigned (PDF)
             direction = str(row.get('txn_direction', '')).lower()
-            if row['fee'] == 0 and row['amount'] < 0:
-                # CSV with signed amounts: just add the signed amount
-                running_balance += row['amount']
-            elif direction == 'credit':
+            # CSV has signed amounts, PDF has unsigned amounts
+            if (direction == 'dr' and row['amount'] < 0) or (direction == 'cr' and row['amount'] > 0):
+                # CSV: amounts are signed, add amount and subtract fee
                 running_balance += row['amount'] - row['fee']
             else:
-                running_balance -= row['amount'] + row['fee']
+                # PDF: amounts are unsigned, use direction with fees
+                if direction == 'credit':
+                    running_balance += row['amount'] - row['fee']
+                else:
+                    running_balance -= row['amount'] + row['fee']
+        else:
+            # Fallback
+            running_balance += row['amount']
 
         df.at[df.index[idx], 'calculated_running_balance'] = running_balance
 

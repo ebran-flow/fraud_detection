@@ -62,3 +62,4 @@ format2_context.txt
 test_*.csv
 prompts
 .~lock*
+uploaded_pdfs
