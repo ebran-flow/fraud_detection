@@ -1,0 +1,129 @@
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input type="checkbox" onclick="toggleAllCheckboxes(this)" class="rounded">
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Run ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Number</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RM Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Format</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opening Balance</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Closing Balance</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% if statements %}
+                {% for stmt in statements %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-4 whitespace-nowrap">
+                        <input type="checkbox" name="run_id" value="{{ stmt.run_id }}" class="rounded">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ stmt.run_id }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ stmt.acc_number or '-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ stmt.acc_prvdr_code or '-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ stmt.rm_name or '-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ stmt.num_rows or 0 }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Format {{ stmt.pdf_format or '?' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ "%.2f"|format(stmt.stmt_opening_balance) if stmt.stmt_opening_balance else '-' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ "%.2f"|format(stmt.stmt_closing_balance) if stmt.stmt_closing_balance else '-' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ stmt.created_at.strftime('%Y-%m-%d %H:%M') if stmt.created_at else '-' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="10" class="px-6 py-4 text-center text-gray-500">No statements found</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total > 0 %}
+<div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    <div class="flex-1 flex justify-between sm:hidden">
+        {% if page > 1 %}
+        <button hx-get="/api/v1/ui/statements-table?page={{ page - 1 }}&page_size={{ page_size }}"
+                hx-target="#statements-table"
+                hx-swap="innerHTML"
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Previous
+        </button>
+        {% endif %}
+        {% if page < total_pages %}
+        <button hx-get="/api/v1/ui/statements-table?page={{ page + 1 }}&page_size={{ page_size }}"
+                hx-target="#statements-table"
+                hx-swap="innerHTML"
+                class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Next
+        </button>
+        {% endif %}
+    </div>
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                Showing page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
+                (Total: <span class="font-medium">{{ total }}</span> statements)
+            </p>
+        </div>
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                {% if page > 1 %}
+                <button hx-get="/api/v1/ui/statements-table?page={{ page - 1 }}&page_size={{ page_size }}"
+                        hx-target="#statements-table"
+                        hx-swap="innerHTML"
+                        class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Previous
+                </button>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
+                        {{ p }}
+                    </span>
+                    {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                    <button hx-get="/api/v1/ui/statements-table?page={{ p }}&page_size={{ page_size }}"
+                            hx-target="#statements-table"
+                            hx-swap="innerHTML"
+                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        {{ p }}
+                    </button>
+                    {% elif p == page - 3 or p == page + 3 %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                    </span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <button hx-get="/api/v1/ui/statements-table?page={{ page + 1 }}&page_size={{ page_size }}"
+                        hx-target="#statements-table"
+                        hx-swap="innerHTML"
+                        class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Next
+                </button>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function toggleAllCheckboxes(source) {
+    const checkboxes = document.querySelectorAll('input[name="run_id"]');
+    checkboxes.forEach(checkbox => checkbox.checked = source.checked);
+}
+</script>
