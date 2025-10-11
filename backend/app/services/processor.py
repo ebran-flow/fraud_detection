@@ -131,14 +131,18 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
 def detect_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     """
     Detect duplicate transactions based on:
+    - Same transaction ID (txn_id)
     - Same transaction date
     - Same amount
     - Same description
+
+    Note: If txn_id is different, transactions are considered separate even if other fields match
     """
     df['is_duplicate'] = False
 
-    # Mark duplicates based on multiple columns
-    duplicate_mask = df.duplicated(subset=['txn_date', 'amount', 'description'], keep='first')
+    # Mark duplicates based on txn_id AND other fields
+    # This ensures transactions with different IDs are not marked as duplicates
+    duplicate_mask = df.duplicated(subset=['txn_id', 'txn_date', 'amount', 'description'], keep='first')
     df.loc[duplicate_mask, 'is_duplicate'] = True
 
     duplicate_count = duplicate_mask.sum()
