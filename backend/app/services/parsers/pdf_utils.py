@@ -1,0 +1,463 @@
+"""
+PDF Parsing Utilities for Airtel Money Statements
+Extracted from process_statements.py for use in parsers
+"""
+import re
+import logging
+import pandas as pd
+import pdfplumber
+from datetime import datetime
+from typing import List, Dict, Any, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+# Expected date formats (use %I for 12-hour format with AM/PM)
+EXPECTED_DT_FORMATS = [
+    '%d-%m-%y %I:%M %p',  # Format 1: 31-08-25 11:14 PM
+    '%d-%m-%y %H:%M',      # Format 1: 31-08-25 23:14
+    '%Y-%m-%d\n%H:%M:%S',  # Format 2: 2025-02-01\n07:16:11
+    '%Y-%m-%d %H:%M:%S'    # Format 2: 2025-02-01 07:16:11
+]
+
+
+def parse_date_string(date_str: str, formats: List[str]) -> Optional[datetime]:
+    """Parse date string using multiple formats."""
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+def detect_pdf_format(page) -> int:
+    """Detect which Airtel format the PDF uses."""
+    extracted_text = page.extract_text()
+
+    # Format 2 has "USER STATEMENT" as title
+    if 'USER STATEMENT' in extracted_text:
+        return 2
+    # Format 1 has "AIRTEL MONEY STATEMENT"
+    elif 'AIRTEL MONEY STATEMENT' in extracted_text:
+        return 1
+
+    # Fallback: check table structure
+    tables = page.extract_tables()
+    if tables and len(tables[0]) > 0:
+        header = tables[0][0]
+        # Format 2 has 'Transation ID' (typo in their PDF)
+        if 'Transation ID' in header or 'Transaction Type' in header:
+            return 2
+        # Format 1 has 'Credit/Debit'
+        elif 'Credit/Debit' in header or 'Transaction Amount' in header:
+            return 1
+
+    return 1  # Default to format 1
+
+
+def extract_account_number(page, pdf_format: int = 1) -> Optional[str]:
+    """Extract account number from PDF page."""
+    extracted_text = page.extract_text()
+
+    if pdf_format == 2:
+        # Format 2: "Mobile Number : 256706015809" (with country code)
+        # Extract last 9 digits
+        pattern = re.compile(r'Mobile Number\s*:\s*(?:256)?(\d{9})', re.I)
+        match = pattern.search(extracted_text)
+        if match:
+            return match.group(1)
+
+    # Format 1: "Mobile Number: 752902485"
+    acc_number_pattern = re.compile(r'Mobile Number\s*:.*?(\b\d{9}\b)', re.S | re.I)
+    acc_number_match = acc_number_pattern.search(extracted_text)
+
+    if acc_number_match:
+        return acc_number_match.group(1)
+    else:
+        # Alternative pattern - find any 9-digit number
+        acc_number_pattern = re.compile(r'(\b\d{9}\b)')
+        matches = acc_number_pattern.findall(extracted_text)
+        if matches:
+            return matches[0]
+
+    logger.warning("Account number not found in statement")
+    return None
+
+
+def is_valid_date(value: Any) -> bool:
+    """Check if a value is a valid date."""
+    if not value:
+        return False
+    try:
+        parsed_date = parse_date_string(str(value).strip(), EXPECTED_DT_FORMATS)
+        return parsed_date is not None
+    except Exception:
+        return False
+
+
+def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> pd.DataFrame:
+    """
+    Clean and convert DataFrame datatypes.
+    - Parses dates
+    - Converts numeric columns (amount, fee, balance)
+    - Cleans text columns and removes newlines from descriptions
+    """
+    # Parse dates
+    df['txn_date'] = df['txn_date'].apply(lambda x: parse_date_string(str(x).strip(), EXPECTED_DT_FORMATS))
+
+    # Clean numeric columns
+    # For Format 2, keep the sign in amounts; for Format 1, strip it
+    df['amount'] = df['amount'].astype(str).str.replace(',', '').str.strip()
+    if pdf_format == 1:
+        # Format 1: Remove any sign prefixes
+        df['amount'] = df['amount'].str.lstrip('+-')
+    # Format 2: Keep the sign (already handled above by just removing commas)
+    df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+
+    df['fee'] = df['fee'].astype(str).str.replace(',', '').str.strip()
+    df['fee'] = pd.to_numeric(df['fee'], errors='coerce').fillna(0)
+
+    df['balance'] = df['balance'].astype(str).str.replace(',', '').str.strip()
+    df['balance'] = pd.to_numeric(df['balance'], errors='coerce')
+
+    # Clean text columns
+    df['description'] = df['description'].astype(str).str.strip()
+    # Remove newlines from description to ensure consistent pattern matching
+    df['description'] = df['description'].str.replace('\r\n', ' ', regex=False)
+    df['description'] = df['description'].str.replace('\n', ' ', regex=False)
+    df['description'] = df['description'].str.replace('\r', ' ', regex=False)
+    # Clean up multiple spaces
+    df['description'] = df['description'].str.replace(r'\s+', ' ', regex=True)
+    df['description'] = df['description'].str.strip()
+
+    df['txn_direction'] = df['txn_direction'].astype(str).str.strip()
+    df['status'] = df['status'].astype(str).str.strip()
+    df['txn_id'] = df['txn_id'].astype(str).str.strip()
+
+    return df
+
+
+def apply_format2_business_rules(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Apply business rules for Format 2 Airtel statements:
+    1. Filter out FAILED and ROLLBACKED transactions
+    2. Handle reversal transactions
+    3. Deduplicate commission disbursements
+    4. Mark balance restart points
+    5. Ensure stable sort for transactions with same datetime
+    """
+    if df.empty:
+        return df
+
+    initial_count = len(df)
+    logger.info(f"Applying Format 2 business rules. Initial transactions: {initial_count}")
+
+    # 1. Filter out FAILED and ROLLBACKED transactions
+    df = df[~df['status'].str.upper().isin(['FAILED', 'ROLLBACKED'])].copy()
+    filtered_count = initial_count - len(df)
+    if filtered_count > 0:
+        logger.info(f"Filtered out {filtered_count} FAILED/ROLLBACKED transactions")
+
+    # 2. Identify reversal transactions (keep them, but log for tracking)
+    reversals = df[df['description'].str.contains('Reversal', case=False, na=False)]
+    if len(reversals) > 0:
+        logger.info(f"Found {len(reversals)} reversal transactions (keeping them)")
+
+    # 3. Deduplicate commission disbursements
+    commission_mask = df['description'].str.contains('Commission', case=False, na=False)
+    if commission_mask.any():
+        commissions = df[commission_mask]
+        dup_commissions = commissions[commissions.duplicated(subset=['txn_date', 'amount', 'balance'], keep='first')]
+        if len(dup_commissions) > 0:
+            logger.info(f"Found {len(dup_commissions)} duplicate commission disbursements")
+            df = df[~df.index.isin(dup_commissions.index)]
+
+    # 4. Mark balance restart points
+    df['_balance_restart'] = False
+
+    commission_disbursement_mask = (
+        df['description'].str.contains('Commission', case=False, na=False) &
+        df['description'].str.contains('Disbursement', case=False, na=False)
+    )
+    df.loc[commission_disbursement_mask, '_balance_restart'] = True
+    commission_restart_count = commission_disbursement_mask.sum()
+
+    dealloc_mask = df['description'].str.contains('Deallocation', case=False, na=False)
+    df.loc[dealloc_mask, '_balance_restart'] = True
+    dealloc_restart_count = dealloc_mask.sum()
+
+    rollback_mask = df['description'].str.contains('RollBack', case=False, na=False)
+    df.loc[rollback_mask, '_balance_restart'] = True
+    rollback_restart_count = rollback_mask.sum()
+
+    reversal_mask = df['description'].str.contains('Transaction Reversal', case=False, na=False)
+    df.loc[reversal_mask, '_balance_restart'] = True
+    reversal_restart_count = reversal_mask.sum()
+
+    total_restart = df['_balance_restart'].sum()
+    if total_restart > 0:
+        logger.info(f"Marked {total_restart} balance restart points")
+
+    # 5. Sort by date and amount sign
+    def get_sort_key(row):
+        if row['amount'] < 0:
+            amount_sign = -1
+        else:
+            amount_sign = 1
+        return (row['txn_date'], amount_sign, row['balance'])
+
+    df['_sort_key'] = df.apply(lambda row: get_sort_key(row), axis=1)
+    df = df.sort_values('_sort_key').reset_index(drop=True)
+    df = df.drop(columns=['_sort_key'])
+
+    df['_sequence'] = df.groupby('txn_date').cumcount()
+
+    final_count = len(df)
+    logger.info(f"After business rules: {final_count} transactions")
+
+    return df
+
+
+def _calculate_segmented_balance(df: pd.DataFrame, initial_opening_balance: float) -> float:
+    """
+    Calculate balance using segmented approach for Format 2 statements.
+    Restarts balance calculation after Commission Disbursements, etc.
+    """
+    if df.empty:
+        return 0
+
+    restart_indices = df[df['_balance_restart']].index.tolist()
+
+    if not restart_indices:
+        return initial_opening_balance + df['amount'].sum()
+
+    segments = []
+    prev_end = -1
+
+    for restart_idx in restart_indices:
+        segment_start = prev_end + 1
+        segment_end = restart_idx - 1
+
+        if segment_end >= segment_start:
+            segments.append((segment_start, segment_end, False))
+
+        segments.append((restart_idx, restart_idx, True))
+        prev_end = restart_idx
+
+    if prev_end < len(df) - 1:
+        segments.append((prev_end + 1, len(df) - 1, False))
+
+    calculated_balance = initial_opening_balance
+
+    for seg_start, seg_end, is_restart in segments:
+        if is_restart:
+            calculated_balance = df.iloc[seg_end]['balance']
+        else:
+            segment_amounts = df.iloc[seg_start:seg_end+1]['amount'].sum()
+            calculated_balance = calculated_balance + segment_amounts
+
+    return calculated_balance
+
+
+def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str]]:
+    """
+    Extract raw tabular data from Airtel PDF statement (handles both formats).
+
+    Returns:
+        pd.DataFrame: Raw transaction data with proper datatypes
+        str: Account number from statement
+    """
+    logger.info(f"Processing PDF: {pdf_path}")
+
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            pages = pdf.pages
+
+            # Detect PDF format
+            pdf_format = detect_pdf_format(pages[0])
+            logger.info(f"Detected PDF format: {pdf_format}")
+
+            # Extract account number
+            acc_number = extract_account_number(pages[0], pdf_format)
+
+            # Extract transaction tables
+            all_rows = []
+
+            if pdf_format == 1:
+                header = ['txn_id', 'txn_date', 'description', 'status',
+                         'amount', 'txn_direction', 'fee', 'balance']
+
+                for page in pages:
+                    tables = page.extract_tables()
+                    for table in tables:
+                        all_rows.extend(table)
+
+                valid_rows = [row for row in all_rows if len(row) >= 8 and is_valid_date(row[1])]
+
+            elif pdf_format == 2:
+                for page in pages:
+                    tables = page.extract_tables()
+                    for table in tables:
+                        for row in table[1:]:
+                            if len(row) >= 10 and is_valid_date(row[0]):
+                                txn_date = row[0]
+                                txn_id = row[1]
+                                description = f"{row[2]} - {row[3]}"
+                                status = row[6]
+                                amount = row[7]
+                                fee = row[8]
+                                balance = row[9]
+
+                                if amount and str(amount).strip():
+                                    if str(amount).strip().startswith('+'):
+                                        txn_direction = 'Credit'
+                                    elif str(amount).strip().startswith('-'):
+                                        txn_direction = 'Debit'
+                                    else:
+                                        txn_direction = 'Unknown'
+                                else:
+                                    txn_direction = 'Unknown'
+
+                                amount_signed = str(amount).strip()
+
+                                all_rows.append([txn_id, txn_date, description, status,
+                                               amount_signed, txn_direction, fee, balance])
+
+                header = ['txn_id', 'txn_date', 'description', 'status',
+                         'amount', 'txn_direction', 'fee', 'balance']
+                valid_rows = all_rows
+
+            else:
+                return pd.DataFrame(), acc_number
+
+            if not valid_rows:
+                logger.warning(f"No valid transaction rows found in {pdf_path}")
+                return pd.DataFrame(), acc_number
+
+            # Create DataFrame
+            df = pd.DataFrame(valid_rows, columns=header)
+            df['pdf_format'] = pdf_format
+
+            # Clean and convert datatypes
+            df = clean_dataframe(df, pdf_format=pdf_format)
+
+            # Apply Format 2 business rules if applicable
+            if pdf_format == 2:
+                df = apply_format2_business_rules(df)
+                if '_sequence' in df.columns:
+                    df = df.drop(columns=['_sequence'])
+
+            return df, acc_number
+
+    except Exception as e:
+        logger.error(f"Error extracting data from {pdf_path}: {e}")
+        raise
+
+
+def compute_balance_summary(df: pd.DataFrame, account_number: str, file_name: str) -> Dict[str, Any]:
+    """
+    Calculate balance summary and verify against statement.
+
+    Returns:
+        dict: Summary with balance verification
+    """
+    if df.empty:
+        logger.warning(f"Empty dataframe for {file_name}")
+        return {
+            'account_number': account_number,
+            'file_name': file_name,
+            'balance_match': 'Failed',
+            'opening_balance': 0,
+            'credits': 0,
+            'debits': 0,
+            'fees': 0,
+            'charges': 0,
+            'calculated_closing_balance': 0,
+            'stmt_closing_balance': 0,
+            'error': 'No transactions found'
+        }
+
+    try:
+        # Sort by transaction date and balance
+        df['_sort_priority'] = df.apply(lambda row: (row['txn_date'], -1 if row['amount'] < 0 else 1, row['balance']), axis=1)
+        df = df.sort_values('_sort_priority').reset_index(drop=True)
+        df = df.drop(columns=['_sort_priority'])
+
+        # Detect format
+        pdf_format = df.iloc[0].get('pdf_format', 1)
+
+        # Calculate opening balance
+        first_balance = df.iloc[0]['balance']
+        first_amount = df.iloc[0]['amount']
+        first_fee = df.iloc[0]['fee']
+
+        if pdf_format == 2:
+            opening_balance = first_balance - first_amount
+
+            total_signed_amounts = df['amount'].sum()
+            fees = df['fee'].sum()
+            charges = 0
+
+            credits = df[df['amount'] > 0]['amount'].sum()
+            debits = abs(df[df['amount'] < 0]['amount'].sum())
+
+            if '_balance_restart' in df.columns and df['_balance_restart'].any():
+                calculated_closing_balance = _calculate_segmented_balance(df, opening_balance)
+            else:
+                calculated_closing_balance = opening_balance + total_signed_amounts
+
+        else:
+            # Format 1
+            first_direction = df.iloc[0]['txn_direction'].lower()
+
+            if first_direction == 'credit':
+                opening_balance = first_balance - first_amount - first_fee
+            else:
+                opening_balance = first_balance + first_amount + first_fee
+
+            credits = df[df['txn_direction'].str.lower() == 'credit']['amount'].sum()
+            debits = df[df['txn_direction'].str.lower() == 'debit']['amount'].sum()
+            fees = df['fee'].sum()
+            charges = 0
+
+            if fees > 0:
+                calc_with_fees = opening_balance + credits - debits - fees
+                diff_with_fees = abs(calc_with_fees - df.iloc[-1]['balance'])
+
+                calc_without_fees = opening_balance + credits - debits
+                diff_without_fees = abs(calc_without_fees - df.iloc[-1]['balance'])
+
+                if diff_with_fees < diff_without_fees:
+                    calculated_closing_balance = calc_with_fees
+                else:
+                    calculated_closing_balance = calc_without_fees
+            else:
+                calculated_closing_balance = opening_balance + credits - debits
+
+        closing_balance_from_stmt = df.iloc[-1]['balance']
+
+        balance_diff = abs(calculated_closing_balance - closing_balance_from_stmt)
+        balance_match = "Success" if balance_diff < 0.01 else "Failed"
+
+        return {
+            'account_number': account_number,
+            'file_name': file_name,
+            'balance_match': balance_match,
+            'opening_balance': opening_balance,
+            'credits': credits,
+            'debits': debits,
+            'fees': fees,
+            'charges': charges,
+            'calculated_closing_balance': calculated_closing_balance,
+            'stmt_closing_balance': closing_balance_from_stmt,
+            'balance_diff': balance_diff
+        }
+
+    except Exception as e:
+        logger.error(f"Error computing balance summary: {e}")
+        return {
+            'account_number': account_number,
+            'file_name': file_name,
+            'balance_match': 'Failed',
+            'error': str(e)
+        }

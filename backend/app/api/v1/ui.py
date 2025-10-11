@@ -10,7 +10,7 @@ from typing import Optional
 from pathlib import Path
 
 from ...services.db import get_db
-from ...services.crud import list_metadata_with_pagination
+from ...services import crud_v2 as crud
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ async def get_statements_table(
         if rm_name:
             filters['rm_name'] = rm_name
 
-        metadata_list, total = list_metadata_with_pagination(
+        metadata_list, total = crud.list_metadata_with_pagination(
             db,
             page=page,
             page_size=page_size,

@@ -1,22 +1,16 @@
 """
 UATL (Airtel) Parser
-Reuses existing parsing logic from process_statements.py
+Uses PDF parsing utilities for Airtel Money statements
 """
 import os
-import sys
 import hashlib
 import logging
 import pdfplumber
 from typing import Dict, List, Any, Tuple
 from datetime import datetime
-from pathlib import Path
 
-# Add project root to path to import existing modules
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# Import existing parsing functions
-from process_statements import (
+# Import PDF parsing utilities
+from .pdf_utils import (
     extract_data_from_pdf,
     compute_balance_summary,
 )
