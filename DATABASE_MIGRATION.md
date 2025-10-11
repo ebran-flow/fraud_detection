@@ -157,7 +157,7 @@ The application will now:
 
 ```bash
 # Upload an existing UATL PDF
-curl -X POST "http://localhost:8000/api/v1/upload" \
+curl -X POST "http://localhost:8501/api/v1/upload" \
   -F "files=@/path/to/statement.pdf"
 ```
 
@@ -167,7 +167,7 @@ Expected: File uploaded to `uatl_raw_statements`
 
 ```bash
 # Upload a UMTN Excel file
-curl -X POST "http://localhost:8000/api/v1/upload" \
+curl -X POST "http://localhost:8501/api/v1/upload" \
   -F "files=@/path/to/statement.xlsx"
 ```
 
@@ -177,7 +177,7 @@ Expected: File uploaded to `umtn_raw_statements` with commission fields
 
 ```bash
 # Process both providers
-curl -X POST "http://localhost:8000/api/v1/process" \
+curl -X POST "http://localhost:8501/api/v1/process" \
   -H "Content-Type: application/json" \
   -d '{"run_ids": ["run_1", "run_2"]}'
 ```
@@ -188,7 +188,7 @@ Expected: Both UATL and UMTN statements processed correctly
 
 ```bash
 # Export all processed statements (both providers)
-curl "http://localhost:8000/api/v1/download/processed?format=csv" \
+curl "http://localhost:8501/api/v1/download/processed?format=csv" \
   --output all_statements.csv
 ```
 

@@ -186,13 +186,13 @@ cd backend
 source venv/bin/activate
 
 # Start the FastAPI server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8501
 ```
 
 You should see:
 
 ```
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Uvicorn running on http://0.0.0.0:8501 (Press CTRL+C to quit)
 INFO:     Started reloader process
 INFO:     Started server process
 INFO:     Waiting for application startup.
@@ -205,12 +205,12 @@ Open a new terminal and test the API:
 
 ```bash
 # Health check
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8501/api/v1/health
 
 # Should return: {"status":"ok"}
 
 # System status
-curl http://localhost:8000/api/v1/status
+curl http://localhost:8501/api/v1/status
 
 # Should return statistics about the database
 ```
@@ -220,7 +220,7 @@ curl http://localhost:8000/api/v1/status
 Open your browser and go to:
 
 ```
-http://localhost:8000/
+http://localhost:8501/
 ```
 
 You should see the fraud detection dashboard.
@@ -231,7 +231,7 @@ You should see the fraud detection dashboard.
 
 ```bash
 # Upload a PDF file (UATL)
-curl -X POST "http://localhost:8000/api/v1/upload" \
+curl -X POST "http://localhost:8501/api/v1/upload" \
   -F "files=@/path/to/your/statement.pdf"
 ```
 
@@ -241,21 +241,21 @@ Replace `/path/to/your/statement.pdf` with an actual PDF file path.
 
 ```bash
 # Upload the MTN Excel file you shared earlier
-curl -X POST "http://localhost:8000/api/v1/upload" \
+curl -X POST "http://localhost:8501/api/v1/upload" \
   -F "files=@/home/ebran/Downloads/68b53484e2b54/1756705924.xlsx"
 ```
 
 ### Test 3: List Statements
 
 ```bash
-curl "http://localhost:8000/api/v1/list?page=1&page_size=10"
+curl "http://localhost:8501/api/v1/list?page=1&page_size=10"
 ```
 
 ### Test 4: Process Statements
 
 ```bash
 # Get run_ids from the list response, then process
-curl -X POST "http://localhost:8000/api/v1/process" \
+curl -X POST "http://localhost:8501/api/v1/process" \
   -H "Content-Type: application/json" \
   -d '{"run_ids": ["1756705924"]}'
 ```
@@ -264,11 +264,11 @@ curl -X POST "http://localhost:8000/api/v1/process" \
 
 ```bash
 # Download as CSV
-curl "http://localhost:8000/api/v1/download/processed?format=csv" \
+curl "http://localhost:8501/api/v1/download/processed?format=csv" \
   --output results.csv
 
 # Download as Excel
-curl "http://localhost:8000/api/v1/download/processed?format=excel" \
+curl "http://localhost:8501/api/v1/download/processed?format=excel" \
   --output results.xlsx
 ```
 
@@ -354,12 +354,12 @@ pip install -r requirements.txt
 mysql -h localhost -P 3307 -u root -p fraud_detection < backend/schema_v2_multitenancy.sql
 ```
 
-### Issue: "Port 8000 already in use"
+### Issue: "Port 8501 already in use"
 
 **Solution:**
 ```bash
-# Find process using port 8000
-lsof -i :8000
+# Find process using port 8501
+lsof -i :8501
 
 # Kill it
 kill -9 <PID>
@@ -381,7 +381,7 @@ uvicorn app.main:app --reload --port 8001
 ```bash
 cd /home/ebran/Developer/projects/airtel_fraud_detection/backend
 source venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8501
 ```
 
 **To stop:**
@@ -429,7 +429,7 @@ MAPPER_CSV=/custom/path/to/mapper.csv
 Once the server is running, visit:
 
 ```
-http://localhost:8000/docs
+http://localhost:8501/docs
 ```
 
 This shows interactive API documentation (Swagger UI) where you can test all endpoints.
@@ -440,7 +440,7 @@ If you encounter any issues:
 
 1. Check logs: `backend/logs/app.log`
 2. Check database: `mysql -h localhost -P 3307 -u root -p fraud_detection`
-3. Check API docs: `http://localhost:8000/docs`
+3. Check API docs: `http://localhost:8501/docs`
 4. Verify `.env` file has correct credentials
 
 ## Success Checklist
@@ -453,7 +453,7 @@ If you encounter any issues:
 - [ ] Dependencies installed
 - [ ] Application starts without errors
 - [ ] Health check returns `{"status":"ok"}`
-- [ ] Web UI accessible at http://localhost:8000
+- [ ] Web UI accessible at http://localhost:8501
 - [ ] Can upload files successfully
 - [ ] Can process and export data
 

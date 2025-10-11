@@ -60,23 +60,23 @@ Open new terminal:
 
 ```bash
 # Health check
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8501/api/v1/health
 
 # Open browser
-# Visit: http://localhost:8000
+# Visit: http://localhost:8501
 ```
 
 ## Upload Your First File
 
 ### Airtel PDF:
 ```bash
-curl -X POST "http://localhost:8000/api/v1/upload" \
+curl -X POST "http://localhost:8501/api/v1/upload" \
   -F "files=@/path/to/statement.pdf"
 ```
 
 ### MTN Excel:
 ```bash
-curl -X POST "http://localhost:8000/api/v1/upload" \
+curl -X POST "http://localhost:8501/api/v1/upload" \
   -F "files=@/path/to/statement.xlsx"
 ```
 
@@ -96,7 +96,7 @@ tail -f backend/logs/app.log
 mysql -h localhost -P 3307 -u root -p fraud_detection -e "SHOW TABLES;"
 
 # List uploaded files
-curl http://localhost:8000/api/v1/list
+curl http://localhost:8501/api/v1/list
 ```
 
 ## File Formats Supported

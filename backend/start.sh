@@ -52,7 +52,7 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv('.env')
 
 # Get database credentials
 DB_HOST = os.getenv('DB_HOST', 'localhost')
@@ -88,11 +88,11 @@ echo ""
 echo " All checks passed!"
 echo ""
 echo "< Starting FastAPI server..."
-echo "   URL: http://localhost:8000"
-echo "   API Docs: http://localhost:8000/docs"
+echo "   URL: http://localhost:8501"
+echo "   API Docs: http://localhost:8501/docs"
 echo ""
 echo "Press CTRL+C to stop the server"
 echo ""
 
 # Start the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8501
