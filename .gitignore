@@ -65,3 +65,4 @@ prompts
 uploaded_pdfs
 *.pdf
 *.csv
+docs/data/UATL/*
