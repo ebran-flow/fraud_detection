@@ -60,3 +60,5 @@ context.txt
 ui_context.txt
 format2_context.txt
 test_*.csv
+prompts
+.~lock*
