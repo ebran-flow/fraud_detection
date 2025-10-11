@@ -1,0 +1,24 @@
+# Airtel Fraud Detection System Dependencies
+
+# Core Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# PDF Processing
+pdfplumber>=0.9.0
+
+# Web UI
+streamlit>=1.28.0
+
+# Database (for mapper.py only)
+SQLAlchemy>=2.0.0
+pymysql>=1.1.0  # or your specific DB driver
+
+# Optional: Google Sheets Integration
+gspread>=5.11.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Utilities
+python-dateutil>=2.8.0
