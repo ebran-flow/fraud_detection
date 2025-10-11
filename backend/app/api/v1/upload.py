@@ -6,7 +6,7 @@ import os
 import logging
 import shutil
 from typing import List
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ...config import UPLOADED_PDF_PATH
@@ -29,14 +29,15 @@ def extract_run_id_from_filename(filename: str) -> str:
     return os.path.splitext(filename)[0]
 
 
-def detect_provider_from_file(filename: str, run_id: str) -> str:
+def detect_provider_from_file(filename: str, run_id: str, file_content_check: str = None) -> str:
     """
     Detect provider code from filename extension and mapper
 
     Priority:
     1. Check mapper.csv for run_id
-    2. Check file extension (.pdf = UATL, .xlsx/.xls/.csv = UMTN)
-    3. Default to UATL
+    2. Check file content for Airtel/MTN indicators (for CSV files)
+    3. Check file extension (.pdf = UATL, .csv with Airtel = UATL, .xlsx/.xls/.csv = UMTN)
+    4. Default to UATL
     """
     # First check mapper
     mapping = get_mapping_by_run_id(run_id)
@@ -48,7 +49,15 @@ def detect_provider_from_file(filename: str, run_id: str) -> str:
     ext = filename.lower().split('.')[-1]
     if ext == 'pdf':
         return 'UATL'
-    elif ext in ['xlsx', 'xls', 'csv']:
+    elif ext == 'csv':
+        # For CSV, check content to determine provider
+        if file_content_check and 'Airtel Money' in file_content_check:
+            logger.info(f"Detected Airtel CSV for {run_id}")
+            return 'UATL'
+        else:
+            logger.info(f"Detected MTN CSV for {run_id}")
+            return 'UMTN'
+    elif ext in ['xlsx', 'xls']:
         return 'UMTN'
 
     # Default
@@ -60,7 +69,7 @@ def validate_file(file_path: str, provider_code: str) -> bool:
     """
     Validate file based on provider type
 
-    UATL: Must be PDF
+    UATL: Must be PDF or CSV (Airtel Money CSV)
     UMTN: Must be Excel or CSV
     """
     if not os.path.exists(file_path):
@@ -70,8 +79,8 @@ def validate_file(file_path: str, provider_code: str) -> bool:
     ext = file_path.lower().split('.')[-1]
 
     if provider_code == 'UATL':
-        if ext != 'pdf':
-            logger.error(f"UATL file must be PDF: {file_path}")
+        if ext not in ['pdf', 'csv']:
+            logger.error(f"UATL file must be PDF or CSV: {file_path}")
             return False
     elif provider_code == 'UMTN':
         if ext not in ['xlsx', 'xls', 'csv']:
@@ -84,7 +93,8 @@ def validate_file(file_path: str, provider_code: str) -> bool:
 @router.post("/upload", response_model=UploadResponse)
 async def upload_files(
     files: List[UploadFile] = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    provider: str = Query(None, description="Provider code (UATL or UMTN)")
 ):
     """
     Upload one or more statement files (PDF for UATL, Excel/CSV for UMTN)
@@ -104,8 +114,13 @@ async def upload_files(
             # Extract run_id from filename
             run_id = extract_run_id_from_filename(file.filename)
 
-            # Detect provider from file and mapper
-            provider_code = detect_provider_from_file(file.filename, run_id)
+            # Use provided provider or detect from file and mapper
+            if provider:
+                provider_code = provider
+                logger.info(f"Using user-selected provider for {run_id}: {provider_code}")
+            else:
+                provider_code = detect_provider_from_file(file.filename, run_id)
+                logger.info(f"Auto-detected provider for {run_id}: {provider_code}")
 
             # Check if already processed (provider-specific)
             if crud.check_run_id_exists(db, run_id, provider_code):
@@ -134,8 +149,8 @@ async def upload_files(
                 failed += 1
                 continue
 
-            # Get provider-specific parser
-            parser = get_parser(provider_code)
+            # Get provider-specific parser based on file type
+            parser = get_parser(provider_code, file_path)
 
             # Parse file using provider-specific parser
             raw_statements, metadata = parser(file_path, run_id)

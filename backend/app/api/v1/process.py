@@ -39,6 +39,7 @@ async def process_statements(
         results = []
         successful = 0
         failed = 0
+        skipped = 0
 
         for run_id, result in results_dict.items():
             if result['status'] == 'success':
@@ -49,9 +50,21 @@ async def process_statements(
                     processed_count=result.get('processed_count'),
                     duplicate_count=result.get('duplicate_count'),
                     balance_match=result.get('balance_match'),
-                    verification_status=result.get('verification_status')
+                    verification_status=result.get('verification_status'),
+                    provider_code=result.get('provider_code')
                 ))
                 successful += 1
+            elif result['status'] == 'skipped':
+                results.append(ProcessResult(
+                    run_id=run_id,
+                    status='skipped',
+                    message='Already processed, skipped',
+                    processed_count=result.get('processed_count'),
+                    duplicate_count=result.get('duplicate_count'),
+                    balance_match=result.get('balance_match'),
+                    verification_status=result.get('verification_status')
+                ))
+                skipped += 1
             else:
                 results.append(ProcessResult(
                     run_id=run_id,
@@ -59,6 +72,8 @@ async def process_statements(
                     message=result.get('message', 'Unknown error')
                 ))
                 failed += 1
+
+        logger.info(f"Processed {len(request.run_ids)} statements: {successful} success, {skipped} skipped, {failed} failed")
 
         return ProcessResponse(
             total=len(request.run_ids),

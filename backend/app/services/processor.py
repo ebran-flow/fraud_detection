@@ -217,9 +217,15 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
         else:
             opening_balance = first_balance - first_amount  # amount is already negative
     else:
-        # Format 1 (UATL): Use direction
+        # Format 1 (UATL): Has Credit/Debit column
+        # Check if amounts are signed (CSV) or unsigned (PDF)
+        # CSV Format 1: fees=0 (included), amounts signed
+        # PDF Format 1: fees separate, amounts unsigned
         first_direction = str(df.iloc[0].get('txn_direction', '')).lower()
-        if first_direction == 'credit':
+        if first_fee == 0 and first_amount < 0:
+            # CSV with signed amounts: just subtract the signed amount
+            opening_balance = first_balance - first_amount
+        elif first_direction == 'credit':
             opening_balance = first_balance - first_amount - first_fee
         else:
             opening_balance = first_balance + first_amount + first_fee
@@ -239,9 +245,13 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             # UMTN: Amount determines direction (positive=credit, negative=debit)
             running_balance += row['amount']
         else:
-            # Format 1 (UATL): Add/subtract based on direction
+            # Format 1 (UATL): Has Credit/Debit column
+            # Check if amounts are signed (CSV) or unsigned (PDF)
             direction = str(row.get('txn_direction', '')).lower()
-            if direction == 'credit':
+            if row['fee'] == 0 and row['amount'] < 0:
+                # CSV with signed amounts: just add the signed amount
+                running_balance += row['amount']
+            elif direction == 'credit':
                 running_balance += row['amount'] - row['fee']
             else:
                 running_balance -= row['amount'] + row['fee']
@@ -274,7 +284,7 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
         credits = float(df[df['amount'] > 0]['amount'].sum())
         debits = float(abs(df[df['amount'] < 0]['amount'].sum()))
     else:
-        # Format 1 (UATL): Use direction
+        # Format 1 and 3 (UATL): Use direction
         credits = float(df[df['txn_direction'].str.lower() == 'credit']['amount'].sum())
         debits = float(df[df['txn_direction'].str.lower() == 'debit']['amount'].sum())
 
@@ -342,13 +352,33 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
 
 
 def batch_process_statements(db: Session, run_ids: List[str]) -> Dict[str, Any]:
-    """Process multiple statements"""
+    """
+    Process multiple statements
+    Skips statements that have already been processed (have existing summary)
+    """
     results = {}
     for run_id in run_ids:
         try:
+            # Check if statement is already processed
+            existing_summary = db.query(Summary).filter(Summary.run_id == run_id).first()
+            if existing_summary:
+                logger.info(f"Statement {run_id} already processed, skipping")
+                results[run_id] = {
+                    'run_id': run_id,
+                    'status': 'skipped',
+                    'message': 'Statement already processed',
+                    'processed_count': 0,
+                    'duplicate_count': existing_summary.duplicate_count,
+                    'balance_match': existing_summary.balance_match,
+                    'verification_status': existing_summary.verification_status
+                }
+                continue
+
+            # Process the statement
             result = process_statement(db, run_id)
             results[run_id] = result
         except Exception as e:
+            logger.error(f"Error processing {run_id}: {e}")
             results[run_id] = {
                 'run_id': run_id,
                 'status': 'error',

@@ -3,267 +3,962 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Airtel Fraud Detection System</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>🔍 Multi-Provider Fraud Detection System</title>
     <style>
-        .htmx-indicator {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 12px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #4a9eff;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #b0b0b0;
+            font-size: 1.1rem;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: rgba(30, 30, 46, 0.8);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .upload-section h2 {
+            color: #4a9eff;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed #4a9eff;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            background: rgba(74, 158, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1rem;
+        }
+
+        .upload-area:hover, .upload-area.drag-over {
+            background: rgba(74, 158, 255, 0.15);
+            border-color: #6bb3ff;
+        }
+
+        .upload-area.drag-over {
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        #file-input {
             display: none;
         }
-        .htmx-request .htmx-indicator {
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #4a9eff;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #3a8eef;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #00d084;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #00c077;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #ff5555;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-list {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(74, 158, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            margin: 0.3rem 0;
+            background: rgba(30, 30, 46, 0.5);
+            border-radius: 6px;
+        }
+
+        .provider-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-uatl {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .badge-umtn {
+            background: rgba(74, 158, 255, 0.2);
+            color: #4a9eff;
+        }
+
+        /* Statements Table */
+        .table-section {
+            background: rgba(30, 30, 46, 0.8);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .table-header h2 {
+            color: #4a9eff;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            background: rgba(30, 30, 46, 0.5);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(74, 158, 255, 0.2);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            color: #4a9eff;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(74, 158, 255, 0.5);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        tr:hover {
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        .selectable {
+            cursor: text;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        /* Status badges */
+        .status-imported {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
             display: inline-block;
         }
-        .htmx-request.htmx-indicator {
+
+        .status-processed {
+            background: rgba(74, 158, 255, 0.2);
+            color: #4a9eff;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
             display: inline-block;
         }
+
+        .status-pass {
+            background: rgba(0, 208, 132, 0.2);
+            color: #00d084;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-fail {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* Checkbox styling */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        #select-all {
+            cursor: pointer;
+        }
+
+        /* Alert messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .alert-success {
+            background: rgba(0, 208, 132, 0.2);
+            border-left: 4px solid #00d084;
+            color: #00d084;
+        }
+
+        .alert-error {
+            background: rgba(255, 107, 107, 0.2);
+            border-left: 4px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        .alert-info {
+            background: rgba(74, 158, 255, 0.2);
+            border-left: 4px solid #4a9eff;
+            color: #4a9eff;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 3px solid rgba(74, 158, 255, 0.3);
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .legend {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(30, 30, 46, 0.5);
+            border-radius: 8px;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .legend-yellow { background: rgba(255, 193, 7, 0.5); }
+        .legend-blue { background: rgba(74, 158, 255, 0.5); }
+        .legend-green { background: rgba(0, 208, 132, 0.5); }
+        .legend-red { background: rgba(255, 107, 107, 0.5); }
     </style>
 </head>
-<body class="bg-gray-100">
-    <!-- Header -->
-    <header class="bg-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <h1 class="text-3xl font-bold">Airtel Fraud Detection System</h1>
-            <p class="text-blue-100 mt-2">PDF Upload, Processing, and Verification</p>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 Multi-Provider Fraud Detection System</h1>
+            <p>Upload → Process → Verify → Download</p>
         </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <!-- Action Bar -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="flex flex-wrap gap-4 items-center">
-                <!-- Upload Button -->
-                <div>
-                    <label for="file-upload" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded cursor-pointer inline-flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                        Upload PDF
-                    </label>
-                    <input id="file-upload" type="file" multiple accept=".pdf" class="hidden"
-                           hx-post="/api/v1/upload"
-                           hx-encoding="multipart/form-data"
-                           hx-target="#upload-result"
-                           hx-indicator="#upload-spinner">
-                </div>
+        <!-- Step 1: Upload & Parse -->
+        <div class="upload-section">
+            <h2>📤 Step 1: Upload & Parse Files</h2>
+            <p style="color: #b0b0b0; margin-bottom: 1rem;">Select provider and upload statement files. Files will be parsed and saved to database.</p>
 
-                <!-- Process Selected Button -->
-                <button id="process-btn"
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                        onclick="processSelected()">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    Process Selected
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Select Provider:</label>
+                <select id="provider-select" style="padding: 0.8rem; border-radius: 8px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 2px solid #4a9eff; font-size: 1rem; width: 300px; cursor: pointer;">
+                    <option value="UATL">Airtel (UATL) - PDF or CSV</option>
+                    <option value="UMTN">MTN (UMTN) - Excel or CSV</option>
+                </select>
+            </div>
+
+            <div class="upload-area" id="upload-area">
+                <div class="upload-icon">☁️</div>
+                <h3>Drag and drop files here</h3>
+                <p style="color: #b0b0b0; margin: 0.5rem 0;">or</p>
+                <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+                    Browse Files
                 </button>
+                <p style="color: #888; margin-top: 1rem; font-size: 0.9rem;" id="supported-formats">Supports: PDF, CSV</p>
+            </div>
+            <input type="file" id="file-input" multiple accept=".pdf,.csv">
 
-                <!-- Download Processed -->
-                <button onclick="downloadProcessed()"
-                        class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded inline-flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                    </svg>
-                    Download Processed
+            <div id="file-list" class="file-list hidden"></div>
+
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-primary" id="upload-btn" disabled onclick="uploadFiles()">
+                    🚀 Upload & Parse Files
                 </button>
+            </div>
 
-                <!-- Download Summary -->
-                <button onclick="downloadSummary()"
-                        class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded inline-flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Download Summary
-                </button>
+            <div id="upload-status"></div>
+        </div>
 
-                <!-- Delete Selected -->
-                <button onclick="deleteSelected(false)"
-                        class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded inline-flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                    Delete Processed
-                </button>
-
-                <!-- Delete All -->
-                <button onclick="deleteSelected(true)"
-                        class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded inline-flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                    </svg>
-                    Delete All Data
-                </button>
-
-                <!-- Refresh Button -->
-                <button hx-get="/api/v1/ui/statements-table?page=1&page_size=50"
-                        hx-target="#statements-table"
-                        hx-swap="innerHTML"
-                        class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded inline-flex items-center ml-auto">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    Refresh
-                </button>
-
-                <!-- Spinner -->
-                <div id="upload-spinner" class="htmx-indicator">
-                    <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+        <!-- Step 2: Statements Table -->
+        <div class="table-section">
+            <div class="table-header">
+                <h2>📋 All Statements</h2>
+                <div class="action-buttons">
+                    <button class="btn btn-primary btn-sm" onclick="downloadAllSummary()">
+                        📊 Download Summary (All)
+                    </button>
+                    <button class="btn btn-success btn-sm" id="process-selected-btn" disabled onclick="processSelected()">
+                        ⚙️ Process Selected
+                    </button>
+                    <button class="btn btn-danger btn-sm" id="delete-processed-btn" disabled onclick="deleteSelected(false)">
+                        🗑️ Delete Processed
+                    </button>
+                    <button class="btn btn-danger btn-sm" id="delete-all-btn" disabled onclick="deleteSelected(true)">
+                        🗑️ Delete All
+                    </button>
                 </div>
             </div>
 
-            <!-- Upload Result -->
-            <div id="upload-result" class="mt-4"></div>
-        </div>
+            <div id="table-status"></div>
 
-        <!-- Statements Table -->
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="p-6">
-                <h2 class="text-2xl font-bold mb-4">Statements</h2>
-                <div id="statements-table"
-                     hx-get="/api/v1/ui/statements-table?page=1&page_size=50"
-                     hx-trigger="load"
-                     hx-swap="innerHTML">
-                    <div class="text-center py-8">
-                        <div class="animate-spin inline-block h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                        <p class="mt-2 text-gray-600">Loading statements...</p>
-                    </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all" onchange="toggleSelectAll()"></th>
+                            <th>Run ID</th>
+                            <th>Provider</th>
+                            <th>Account</th>
+                            <th>RM Name</th>
+                            <th>Rows</th>
+                            <th>Imported</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                            <th>Verification</th>
+                            <th>Duplicates</th>
+                            <th>Balance Diff Changes</th>
+                            <th>Balance Diff Ratio</th>
+                            <th>Calculated Balance</th>
+                            <th>Statement Balance</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Producer</th>
+                            <th>Created At</th>
+                            <th>Modified At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statements-tbody">
+                        <tr>
+                            <td colspan="20" style="text-align: center; padding: 2rem; color: #888;">
+                                Loading statements...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-yellow"></div>
+                    <span>Yellow = Imported (Not Processed)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-blue"></div>
+                    <span>Blue = Processed</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-green"></div>
+                    <span>Green = Verified/Pass</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-red"></div>
+                    <span>Red = Failed</span>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
     <script>
-        // Handle file upload with FormData
-        document.getElementById('file-upload').addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files.length === 0) return;
+        let selectedFiles = [];
+        let selectedRunIds = new Set();
+
+        // Provider selection handler
+        document.getElementById('provider-select').addEventListener('change', function() {
+            const provider = this.value;
+            const fileInput = document.getElementById('file-input');
+            const formatsText = document.getElementById('supported-formats');
+
+            if (provider === 'UATL') {
+                fileInput.accept = '.pdf,.csv';
+                formatsText.textContent = 'Supports: PDF, CSV (Airtel Money statements)';
+            } else {
+                fileInput.accept = '.xlsx,.xls,.csv';
+                formatsText.textContent = 'Supports: Excel (XLSX, XLS), CSV';
+            }
+
+            // Clear selected files when provider changes
+            fileInput.value = '';
+            selectedFiles = [];
+            document.getElementById('file-list').classList.add('hidden');
+            document.getElementById('upload-btn').disabled = true;
+        });
+
+        // Drag and drop handlers
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.classList.add('drag-over');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.classList.remove('drag-over');
+            }, false);
+        });
+
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            handleFiles(files);
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            selectedFiles = Array.from(files);
+            if (selectedFiles.length === 0) return;
+
+            document.getElementById('file-list').classList.remove('hidden');
+            document.getElementById('upload-btn').disabled = false;
+
+            // Get selected provider from dropdown
+            const provider = document.getElementById('provider-select').value;
+            const badgeClass = provider === 'UATL' ? 'badge-uatl' : 'badge-umtn';
+
+            let html = '<h4 style="margin-bottom: 0.5rem; color: #4a9eff;">Selected Files:</h4>';
+            selectedFiles.forEach(file => {
+                html += `
+                    <div class="file-item">
+                        <span>📄 ${file.name}</span>
+                        <span class="provider-badge ${badgeClass}">${provider}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('file-list').innerHTML = html;
+        }
+
+        // Upload files
+        async function uploadFiles() {
+            const uploadBtn = document.getElementById('upload-btn');
+            const statusDiv = document.getElementById('upload-status');
+            const provider = document.getElementById('provider-select').value;
+
+            uploadBtn.disabled = true;
+            statusDiv.innerHTML = '<div class="spinner"></div><p style="text-align: center;">Uploading and parsing files...</p>';
 
             const formData = new FormData();
-            for (let file of files) {
+            selectedFiles.forEach(file => {
                 formData.append('files', file);
+            });
+
+            try {
+                const response = await fetch(`/api/v1/upload?provider=${provider}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.successful > 0) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ Successfully uploaded and parsed ${result.successful} file(s)
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-error">
+                            ❌ No files were uploaded successfully
+                        </div>
+                    `;
+                }
+
+                // Clear form
+                fileInput.value = '';
+                selectedFiles = [];
+                document.getElementById('file-list').classList.add('hidden');
+                uploadBtn.disabled = true;
+
+                // Reload table
+                await loadStatements();
+
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // Load statements table
+        async function loadStatements() {
+            try {
+                const response = await fetch('/api/v1/unified-list?page_size=100');
+                const data = await response.json();
+
+                const tbody = document.getElementById('statements-tbody');
+
+                if (data.items.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="20" style="text-align: center; padding: 2rem; color: #888;">
+                                No statements found. Upload files above to get started.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                data.items.forEach(item => {
+                    const statusClass = item.processing_status === 'IMPORTED' ? 'status-imported' : 'status-processed';
+                    const verificationBadge = getVerificationBadge(item);
+                    const providerName = item.acc_prvdr_code === 'UATL' ? 'Airtel' : 'MTN';
+                    const canProcess = item.processing_status === 'IMPORTED';
+
+                    html += `
+                        <tr>
+                            <td><input type="checkbox" class="row-checkbox" data-run-id="${item.run_id}" data-status="${item.processing_status}" data-acc-number="${item.acc_number || 'unknown'}"></td>
+                            <td><span class="selectable">${item.run_id}</span></td>
+                            <td>${providerName}</td>
+                            <td>${item.acc_number || 'N/A'}</td>
+                            <td>${item.rm_name || 'N/A'}</td>
+                            <td>${item.num_rows || 0}</td>
+                            <td>${formatDate(item.imported_at)}</td>
+                            <td><span class="${statusClass}">${item.processing_status}</span></td>
+                            <td>
+                                <div class="action-cell">
+                                    ${item.processing_status === 'PROCESSED' ?
+                                        `<button class="btn btn-sm btn-primary" onclick="downloadProcessed('${item.run_id}', '${item.acc_number || 'unknown'}')">📥 Download</button>` :
+                                        `<button class="btn btn-sm btn-success" onclick="processSingle('${item.run_id}')">⚙️ Process</button>`
+                                    }
+                                </div>
+                            </td>
+                            <td>${verificationBadge}</td>
+                            <td>${item.duplicate_count !== null && item.duplicate_count !== undefined ? item.duplicate_count : '-'}</td>
+                            <td>${item.balance_diff_changes !== null && item.balance_diff_changes !== undefined ? item.balance_diff_changes : '-'}</td>
+                            <td>${item.balance_diff_change_ratio !== null && item.balance_diff_change_ratio !== undefined ? item.balance_diff_change_ratio.toFixed(4) : '-'}</td>
+                            <td>${item.calculated_closing_balance !== null && item.calculated_closing_balance !== undefined ? formatNumber(item.calculated_closing_balance) : '-'}</td>
+                            <td>${item.stmt_closing_balance !== null && item.stmt_closing_balance !== undefined ? formatNumber(item.stmt_closing_balance) : '-'}</td>
+                            <td><span class="selectable">${item.meta_title || 'N/A'}</span></td>
+                            <td><span class="selectable">${item.meta_author || 'N/A'}</span></td>
+                            <td><span class="selectable">${item.meta_producer || 'N/A'}</span></td>
+                            <td>${formatDate(item.meta_created_at)}</td>
+                            <td>${formatDate(item.meta_modified_at)}</td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+
+                // Add checkbox listeners
+                document.querySelectorAll('.row-checkbox').forEach(cb => {
+                    cb.addEventListener('change', updateSelectedCount);
+                });
+
+            } catch (error) {
+                console.error('Error loading statements:', error);
+                document.getElementById('statements-tbody').innerHTML = `
+                    <tr>
+                        <td colspan="20" style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                            Error loading statements: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function getVerificationBadge(item) {
+            if (item.processing_status === 'IMPORTED') {
+                return '<span style="color: #888;">-</span>';
             }
 
-            fetch('/api/v1/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                displayUploadResult(data);
-                // Refresh table
-                htmx.trigger('#statements-table', 'load');
-                // Reset file input
-                e.target.value = '';
-            })
-            .catch(error => {
-                document.getElementById('upload-result').innerHTML = `
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                        <strong>Error:</strong> ${error.message}
-                    </div>
-                `;
-            });
-        });
-
-        function displayUploadResult(data) {
-            const resultDiv = document.getElementById('upload-result');
-            let html = `
-                <div class="bg-blue-50 border border-blue-200 rounded p-4">
-                    <h3 class="font-bold mb-2">Upload Results</h3>
-                    <p>Total: ${data.total_files} | Success: ${data.successful} | Skipped: ${data.skipped} | Failed: ${data.failed}</p>
-                    <div class="mt-2 max-h-40 overflow-y-auto">
-            `;
-
-            data.results.forEach(result => {
-                const statusColor = result.status === 'success' ? 'green' : result.status === 'skipped' ? 'yellow' : 'red';
-                html += `
-                    <div class="text-sm py-1 border-b border-gray-200">
-                        <span class="font-semibold text-${statusColor}-600">${result.status.toUpperCase()}:</span>
-                        ${result.filename} - ${result.message}
-                    </div>
-                `;
-            });
-
-            html += `</div></div>`;
-            resultDiv.innerHTML = html;
+            if (item.verification_status === 'PASS') {
+                return '<span class="status-pass">PASS</span>';
+            } else if (item.verification_status === 'FAIL') {
+                return '<span class="status-fail">FAIL</span>';
+            } else if (item.verification_status === 'WARNING') {
+                return '<span class="status-warning">WARNING</span>';
+            }
+            return '<span style="color: #888;">N/A</span>';
         }
 
-        function getSelectedRunIds() {
-            const checkboxes = document.querySelectorAll('input[name="run_id"]:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            return date.toLocaleString();
         }
 
-        function processSelected() {
-            const runIds = getSelectedRunIds();
-            if (runIds.length === 0) {
-                alert('Please select at least one statement to process');
+        function formatNumber(num) {
+            if (num === null || num === undefined) return 'N/A';
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(num);
+        }
+
+        // Select all checkbox
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            selectedRunIds.clear();
+            let importedCount = 0;
+            let processedCount = 0;
+
+            document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+                selectedRunIds.add(cb.dataset.runId);
+                if (cb.dataset.status === 'IMPORTED') {
+                    importedCount++;
+                } else {
+                    processedCount++;
+                }
+            });
+
+            // Enable process button only if IMPORTED statements are selected
+            document.getElementById('process-selected-btn').disabled = importedCount === 0;
+
+            // Enable delete buttons if any statements are selected
+            document.getElementById('delete-processed-btn').disabled = selectedRunIds.size === 0;
+            document.getElementById('delete-all-btn').disabled = selectedRunIds.size === 0;
+        }
+
+        // Process selected
+        async function processSelected() {
+            if (selectedRunIds.size === 0) return;
+
+            const statusDiv = document.getElementById('table-status');
+            statusDiv.innerHTML = '<div class="spinner"></div><p style="text-align: center;">Processing selected statements...</p>';
+
+            try {
+                const response = await fetch('/api/v1/process', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({run_ids: Array.from(selectedRunIds)})
+                });
+
+                const result = await response.json();
+
+                // Count skipped statements
+                const skipped = result.results.filter(r => r.status === 'skipped').length;
+
+                let message = '';
+                if (result.successful > 0) {
+                    message += `✅ Successfully processed ${result.successful} statement(s)<br>`;
+                }
+                if (skipped > 0) {
+                    message += `⏭️ Skipped ${skipped} statement(s) (already processed)<br>`;
+                }
+                if (result.failed > 0) {
+                    message += `❌ Failed to process ${result.failed} statement(s)`;
+                }
+
+                statusDiv.innerHTML = `<div class="alert alert-success">${message}</div>`;
+
+                // Reload table
+                selectedRunIds.clear();
+                await loadStatements();
+
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Process single
+        async function processSingle(runId) {
+            const statusDiv = document.getElementById('table-status');
+            statusDiv.innerHTML = '<div class="spinner"></div><p style="text-align: center;">Processing statement...</p>';
+
+            try {
+                const response = await fetch('/api/v1/process', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({run_ids: [runId]})
+                });
+
+                const result = await response.json();
+
+                const firstResult = result.results[0];
+                let message = '';
+                let alertClass = 'alert-success';
+
+                if (firstResult.status === 'success') {
+                    message = '✅ Statement processed successfully';
+                } else if (firstResult.status === 'skipped') {
+                    message = '⏭️ Statement was already processed, skipped';
+                    alertClass = 'alert-info';
+                } else {
+                    message = `❌ Error: ${firstResult.message}`;
+                    alertClass = 'alert-error';
+                }
+
+                statusDiv.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+
+                await loadStatements();
+
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Delete selected
+        async function deleteSelected(deleteAll) {
+            if (selectedRunIds.size === 0) return;
+
+            const action = deleteAll ? 'delete all data (including raw)' : 'delete processed data';
+            if (!confirm(`Are you sure you want to ${action} for ${selectedRunIds.size} statement(s)?`)) {
                 return;
             }
 
-            if (!confirm(`Process ${runIds.length} selected statement(s)?`)) return;
+            const statusDiv = document.getElementById('table-status');
+            statusDiv.innerHTML = '<div class="spinner"></div><p style="text-align: center;">Deleting data...</p>';
 
-            fetch('/api/v1/process', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({run_ids: runIds})
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(`Processing complete: ${data.successful} successful, ${data.failed} failed`);
-                htmx.trigger('#statements-table', 'load');
-            })
-            .catch(error => alert('Error: ' + error.message));
-        }
+            try {
+                const response = await fetch('/api/v1/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        run_ids: Array.from(selectedRunIds),
+                        delete_all: deleteAll,
+                        confirm: true
+                    })
+                });
 
-        function downloadProcessed() {
-            const runIds = getSelectedRunIds();
-            const params = runIds.length > 0 ? '?run_ids=' + runIds.join('&run_ids=') : '';
-            window.location.href = '/api/v1/download/processed' + params + '&format=csv';
-        }
+                const result = await response.json();
 
-        function downloadSummary() {
-            const runIds = getSelectedRunIds();
-            const params = runIds.length > 0 ? '?run_ids=' + runIds.join('&run_ids=') : '';
-            window.location.href = '/api/v1/download/summary' + params + '&format=csv';
-        }
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        ✅ Successfully deleted ${result.successful} statement(s)
+                    </div>
+                `;
 
-        function deleteSelected(deleteAll) {
-            const runIds = getSelectedRunIds();
-            if (runIds.length === 0) {
-                alert('Please select at least one statement to delete');
-                return;
+                selectedRunIds.clear();
+                await loadStatements();
+
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
             }
-
-            const message = deleteAll
-                ? `DELETE ALL DATA for ${runIds.length} statement(s)? This cannot be undone!`
-                : `Delete processed data for ${runIds.length} statement(s)? Raw data will be kept.`;
-
-            if (!confirm(message)) return;
-
-            fetch('/api/v1/delete', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    run_ids: runIds,
-                    delete_all: deleteAll,
-                    confirm: true
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(`Deletion complete: ${data.successful} successful, ${data.failed} failed`);
-                htmx.trigger('#statements-table', 'load');
-            })
-            .catch(error => alert('Error: ' + error.message));
         }
 
-        // Handle HTMX response for list endpoint
-        document.body.addEventListener('htmx:afterSwap', function(event) {
-            if (event.detail.target.id === 'statements-table') {
-                // Table loaded, you can add additional logic here if needed
+        // Download summary for all statements
+        async function downloadAllSummary() {
+            try {
+                const filename = `summary_all_statements.csv`;
+                const response = await fetch(`/api/v1/download/summary?format=csv`);
+
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Error downloading summary: ' + error.message);
             }
-        });
+        }
+
+        // Download processed statements for specific run_id
+        async function downloadProcessed(runId, accNumber) {
+            try {
+                const filename = `${accNumber}_${runId}.csv`;
+                const response = await fetch(`/api/v1/download/processed?run_id=${runId}&format=csv`);
+
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Error downloading processed statements: ' + error.message);
+            }
+        }
+
+        // Load statements on page load
+        loadStatements();
+
+        // Refresh every 10 seconds
+        setInterval(loadStatements, 10000);
     </script>
 </body>
 </html>

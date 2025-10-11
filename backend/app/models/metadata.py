@@ -2,7 +2,7 @@
 Metadata Model
 Stores document-level and parsing-related info (one row per run_id)
 """
-from sqlalchemy import Column, BigInteger, String, Integer, Numeric, DateTime, TIMESTAMP, Index, SmallInteger
+from sqlalchemy import Column, BigInteger, String, Integer, Numeric, DateTime, TIMESTAMP, Index, SmallInteger, Text
 from sqlalchemy.sql import func
 from .base import Base
 
@@ -17,6 +17,8 @@ class Metadata(Base):
     pdf_format = Column(SmallInteger)  # 1 or 2
     rm_name = Column(String(256))
     num_rows = Column(Integer)
+    parsing_status = Column(String(32), default='SUCCESS')
+    parsing_error = Column(Text)
     sheet_md5 = Column(String(64))
     summary_opening_balance = Column(Numeric(18, 2))
     summary_closing_balance = Column(Numeric(18, 2))
@@ -46,6 +48,8 @@ class Metadata(Base):
             'pdf_format': self.pdf_format,
             'rm_name': self.rm_name,
             'num_rows': self.num_rows,
+            'parsing_status': self.parsing_status,
+            'parsing_error': self.parsing_error,
             'sheet_md5': self.sheet_md5,
             'summary_opening_balance': float(self.summary_opening_balance) if self.summary_opening_balance else None,
             'summary_closing_balance': float(self.summary_closing_balance) if self.summary_closing_balance else None,

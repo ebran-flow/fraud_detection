@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @router.get("/download/processed")
 async def download_processed_statements(
     run_ids: Optional[List[str]] = Query(None),
+    run_id: Optional[str] = Query(None),  # Single run_id (preferred)
     acc_number: Optional[str] = Query(None),
     acc_prvdr_code: Optional[str] = Query(None),
     format: str = Query('csv', regex='^(csv|excel)$'),
@@ -31,7 +32,12 @@ async def download_processed_statements(
 ):
     """
     Download processed statements as CSV or Excel
+    Use run_id parameter for single statement download (recommended)
+    Use run_ids for multiple statements
     """
+    # Prioritize single run_id if provided
+    if run_id:
+        run_ids = [run_id]
     try:
         if format == 'csv':
             csv_data = export_processed_statements_csv(db, run_ids, acc_number, acc_prvdr_code)
@@ -64,6 +70,7 @@ async def download_processed_statements(
 @router.get("/download/summary")
 async def download_summary(
     run_ids: Optional[List[str]] = Query(None),
+    run_id: Optional[str] = Query(None),  # Single run_id (preferred)
     acc_number: Optional[str] = Query(None),
     acc_prvdr_code: Optional[str] = Query(None),
     format: str = Query('csv', regex='^(csv|excel)$'),
@@ -71,7 +78,12 @@ async def download_summary(
 ):
     """
     Download summary data as CSV or Excel
+    Use run_id parameter for single statement download (recommended)
+    Use run_ids for multiple statements
     """
+    # Prioritize single run_id if provided
+    if run_id:
+        run_ids = [run_id]
     try:
         if format == 'csv':
             csv_data = export_summary_csv(db, run_ids, acc_number, acc_prvdr_code)
