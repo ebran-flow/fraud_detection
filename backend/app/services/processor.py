@@ -14,6 +14,12 @@ from ..models.metadata import Metadata
 from ..models.summary import Summary
 from . import crud_v2 as crud
 from .provider_factory import ProviderFactory
+from .balance_utils import (
+    is_amount_signed,
+    calculate_opening_balance,
+    apply_transaction_to_balance,
+    calculate_total_credits_debits
+)
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +207,7 @@ def optimize_same_timestamp_transactions(df: pd.DataFrame, pdf_format: int, bala
     df = df.sort_values(['txn_date', balance_field], ascending=[True, False]).reset_index(drop=True)
 
     # Detect if amounts are signed (CSV) or unsigned (PDF)
-    amounts_are_signed = (df['amount'] < 0).any()
+    amounts_are_signed = is_amount_signed(df, pdf_format, 'UATL')
 
     # Group by timestamp and optimize each group
     optimized_groups = []
@@ -237,14 +243,14 @@ def optimize_same_timestamp_transactions(df: pd.DataFrame, pdf_format: int, bala
                         row = test_df.iloc[i]
 
                         # Apply transaction to get expected balance
-                        if amounts_are_signed:
-                            expected_bal = running_bal + row['amount'] - row['fee']
-                        else:
-                            direction = str(row.get('txn_direction', '')).lower()
-                            if direction == 'credit':
-                                expected_bal = running_bal + row['amount'] - row['fee']
-                            else:
-                                expected_bal = running_bal - row['amount'] - row['fee']
+                        expected_bal = apply_transaction_to_balance(
+                            running_bal,
+                            row['amount'],
+                            row['fee'],
+                            str(row.get('txn_direction', '')),
+                            amounts_are_signed,
+                            pdf_format
+                        )
 
                         # Check if it matches the row's statement balance
                         if abs(expected_bal - row[balance_field]) < 0.01:
@@ -282,41 +288,21 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     if df.empty:
         return df
 
+    # Determine if amounts are signed or unsigned
+    amounts_signed = is_amount_signed(df, pdf_format, provider_code)
+
     # Calculate opening balance from first transaction
-    # Use provider-specific balance field
-    first_balance = df.iloc[0][balance_field]
-    first_amount = df.iloc[0]['amount']
-    first_fee = df.iloc[0]['fee']
+    first_row = df.iloc[0]
+    first_balance = first_row[balance_field]
+    first_amount = first_row['amount']
+    first_fee = first_row['fee']
+    first_direction = str(first_row.get('txn_direction', ''))
 
-    # Handle different transaction direction formats
-    if pdf_format == 2:
-        # Format 2: Amount is signed
-        opening_balance = first_balance - first_amount
-    elif provider_code == 'UMTN':
-        # UMTN: Detect direction from amount sign
-        if first_amount > 0:
-            opening_balance = first_balance - first_amount
-        else:
-            opening_balance = first_balance - first_amount  # amount is already negative
-    elif pdf_format == 1:
-        # Format 1: Check if amounts are signed (CSV) or unsigned (PDF)
-        first_direction = str(df.iloc[0].get('txn_direction', '')).lower()
-        # CSV has signed amounts (negative for debits), PDF has unsigned amounts
-        # Detect by checking if debit has negative amount or credit has positive amount
-        if (first_direction == 'dr' and first_amount < 0) or (first_direction == 'cr' and first_amount > 0):
-            # CSV: amounts are signed, subtract amount and fee
-            opening_balance = first_balance - first_amount - first_fee
-        else:
-            # PDF: amounts are unsigned, use direction
-            if first_direction == 'credit':
-                opening_balance = first_balance - first_amount - first_fee
-            else:
-                opening_balance = first_balance + first_amount + first_fee
-    else:
-        # Fallback
-        opening_balance = first_balance - first_amount
+    opening_balance = calculate_opening_balance(
+        first_balance, first_amount, first_fee, first_direction, amounts_signed, pdf_format
+    )
 
-    # Calculate running balance
+    # Calculate running balance for each transaction
     running_balance = opening_balance
     prev_diff = None
     change_count = 0
@@ -324,32 +310,19 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     for idx in range(len(df)):
         row = df.iloc[idx]
 
-        if pdf_format == 2:
-            # Format 2: Amount is signed, just add it
-            running_balance += row['amount']
-        elif provider_code == 'UMTN':
-            # UMTN: Amount is signed (positive=credit, negative=debit)
-            running_balance += row['amount']
-        elif pdf_format == 1:
-            # Format 1: Check if amounts are signed (CSV) or unsigned (PDF)
-            direction = str(row.get('txn_direction', '')).lower()
-            # CSV has signed amounts, PDF has unsigned amounts
-            if (direction == 'dr' and row['amount'] < 0) or (direction == 'cr' and row['amount'] > 0):
-                # CSV: amounts are signed, add amount and subtract fee
-                running_balance += row['amount'] - row['fee']
-            else:
-                # PDF: amounts are unsigned, use direction with fees
-                if direction == 'credit':
-                    running_balance += row['amount'] - row['fee']
-                else:
-                    running_balance -= row['amount'] + row['fee']
-        else:
-            # Fallback
-            running_balance += row['amount']
+        # Apply transaction to running balance
+        running_balance = apply_transaction_to_balance(
+            running_balance,
+            row['amount'],
+            row['fee'],
+            str(row.get('txn_direction', '')),
+            amounts_signed,
+            pdf_format
+        )
 
         df.at[df.index[idx], 'calculated_running_balance'] = running_balance
 
-        # Calculate difference from statement balance using provider-specific field
+        # Calculate difference from statement balance
         stmt_balance = row[balance_field]
         balance_diff = running_balance - stmt_balance
         df.at[df.index[idx], 'balance_diff'] = balance_diff
@@ -369,16 +342,8 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
     Generate summary record from processed data
     Supports different balance fields per provider
     """
-    # Calculate totals
-    if metadata.pdf_format == 2 or provider_code == 'UMTN':
-        # Format 2 or UMTN: Amount is signed
-        credits = float(df[df['amount'] > 0]['amount'].sum())
-        debits = float(abs(df[df['amount'] < 0]['amount'].sum()))
-    else:
-        # Format 1 and 3 (UATL): Use direction
-        credits = float(df[df['txn_direction'].str.lower() == 'credit']['amount'].sum())
-        debits = float(df[df['txn_direction'].str.lower() == 'debit']['amount'].sum())
-
+    # Calculate totals using centralized utility
+    credits, debits = calculate_total_credits_debits(df, metadata.pdf_format, provider_code)
     fees = float(df['fee'].sum())
     charges = 0.0  # Can be calculated separately if needed
 

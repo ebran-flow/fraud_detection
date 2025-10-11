@@ -63,3 +63,5 @@ test_*.csv
 prompts
 .~lock*
 uploaded_pdfs
+*.pdf
+*.csv

@@ -12,8 +12,9 @@ load_dotenv(dotenv_path=env_path)
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 BACKEND_ROOT = PROJECT_ROOT / "backend"
-UPLOADED_PDF_PATH = PROJECT_ROOT / "uploaded_pdfs"
-MAPPER_CSV = PROJECT_ROOT / "mapper.csv"
+DATA_ROOT = PROJECT_ROOT / "docs" / "data"
+UPLOADED_PDF_PATH = DATA_ROOT / "uploaded_pdfs"
+MAPPER_CSV = DATA_ROOT / "statements" / "mapper.csv"
 
 # Database configuration
 DB_HOST = os.getenv("DB_HOST", "localhost")

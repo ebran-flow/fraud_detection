@@ -38,11 +38,11 @@ fi
 
 # Create necessary directories
 echo "📁 Creating necessary directories..."
-mkdir -p uploaded_pdfs
-mkdir -p results
-mkdir -p detailed_sheets
+mkdir -p docs/data/uploaded_pdfs
+mkdir -p docs/data/statements
+mkdir -p docs/data/detailed_sheets
 mkdir -p batch_results
-mkdir -p statements
+mkdir -p results
 
 echo ""
 echo "✅ Setup complete!"
