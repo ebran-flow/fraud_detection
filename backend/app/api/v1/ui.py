@@ -11,6 +11,7 @@ from pathlib import Path
 
 from ...services.db import get_db
 from ...services import crud_v2 as crud
+from ...models.summary import Summary
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -48,12 +49,37 @@ async def get_statements_table(
             filters=filters
         )
 
+        # Enrich metadata with summary data (balance_match, verification_reason)
+        enriched_statements = []
+        for metadata in metadata_list:
+            # Get summary for this run_id
+            summary = crud.get_summary_by_run_id(db, metadata.run_id)
+
+            # Create enriched object with both metadata and summary data
+            stmt_data = {
+                'run_id': metadata.run_id,
+                'acc_number': metadata.acc_number,
+                'acc_prvdr_code': metadata.acc_prvdr_code,
+                'rm_name': metadata.rm_name,
+                'num_rows': metadata.num_rows,
+                'pdf_format': metadata.pdf_format,
+                'stmt_opening_balance': metadata.stmt_opening_balance,
+                'stmt_closing_balance': metadata.stmt_closing_balance,
+                'created_at': metadata.created_at,
+                # Add summary fields
+                'balance_match': summary.balance_match if summary else None,
+                'verification_status': summary.verification_status if summary else None,
+                'verification_reason': summary.verification_reason if summary else None,
+                'calculated_closing_balance': summary.calculated_closing_balance if summary else None,
+            }
+            enriched_statements.append(stmt_data)
+
         import math
         total_pages = math.ceil(total / page_size)
 
         return templates.TemplateResponse("statements_table.html", {
             "request": request,
-            "statements": metadata_list,
+            "statements": enriched_statements,
             "page": page,
             "page_size": page_size,
             "total": total,

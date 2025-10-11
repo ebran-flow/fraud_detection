@@ -103,6 +103,11 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
         # Generate summary
         summary_data = generate_summary(df, metadata, run_id, provider_code, balance_field)
 
+        # Update metadata with actual closing balance from last processed row
+        if len(df) > 0:
+            metadata.stmt_closing_balance = float(df.iloc[-1][balance_field])
+            metadata.stmt_opening_balance = float(df.iloc[0][balance_field])
+
         # Check if summary exists, update or create
         existing_summary = crud.get_summary_by_run_id(db, run_id)
         if existing_summary:
@@ -375,6 +380,10 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
         verification_status = 'PASS'
         verification_reason = 'Passed with minor issues'
 
+    # Get opening and closing balance from actual processed data
+    stmt_opening_balance = float(df.iloc[0][balance_field]) if len(df) > 0 else 0.0
+    stmt_closing_balance_actual = float(df.iloc[-1][balance_field]) if len(df) > 0 else 0.0
+
     summary = {
         'run_id': run_id,
         'acc_number': metadata.acc_number,
@@ -384,8 +393,8 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
         'sheet_md5': metadata.sheet_md5,
         'summary_opening_balance': metadata.summary_opening_balance,
         'summary_closing_balance': metadata.summary_closing_balance,
-        'stmt_opening_balance': metadata.stmt_opening_balance,
-        'stmt_closing_balance': metadata.stmt_closing_balance,
+        'stmt_opening_balance': stmt_opening_balance,
+        'stmt_closing_balance': stmt_closing_balance_actual,
         'duplicate_count': duplicate_count,
         'balance_match': balance_match,
         'verification_status': verification_status,

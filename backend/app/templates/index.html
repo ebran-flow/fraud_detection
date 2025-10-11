@@ -451,7 +451,9 @@
                             <th>Imported</th>
                             <th>Status</th>
                             <th>Actions</th>
+                            <th>Balance Match</th>
                             <th>Verification</th>
+                            <th>Verification Reason</th>
                             <th>Duplicates</th>
                             <th>Balance Diff Changes</th>
                             <th>Balance Diff Ratio</th>
@@ -466,7 +468,7 @@
                     </thead>
                     <tbody id="statements-tbody">
                         <tr>
-                            <td colspan="20" style="text-align: center; padding: 2rem; color: #888;">
+                            <td colspan="22" style="text-align: center; padding: 2rem; color: #888;">
                                 Loading statements...
                             </td>
                         </tr>
@@ -647,7 +649,7 @@
                 if (data.items.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="20" style="text-align: center; padding: 2rem; color: #888;">
+                            <td colspan="22" style="text-align: center; padding: 2rem; color: #888;">
                                 No statements found. Upload files above to get started.
                             </td>
                         </tr>
@@ -658,7 +660,9 @@
                 let html = '';
                 data.items.forEach(item => {
                     const statusClass = item.processing_status === 'IMPORTED' ? 'status-imported' : 'status-processed';
+                    const balanceMatchBadge = getBalanceMatchBadge(item);
                     const verificationBadge = getVerificationBadge(item);
+                    const verificationReason = getVerificationReason(item);
                     const providerName = item.acc_prvdr_code === 'UATL' ? 'Airtel' : 'MTN';
                     const canProcess = item.processing_status === 'IMPORTED';
 
@@ -680,7 +684,9 @@
                                     }
                                 </div>
                             </td>
+                            <td>${balanceMatchBadge}</td>
                             <td>${verificationBadge}</td>
+                            <td>${verificationReason}</td>
                             <td>${item.duplicate_count !== null && item.duplicate_count !== undefined ? item.duplicate_count : '-'}</td>
                             <td>${item.balance_diff_changes !== null && item.balance_diff_changes !== undefined ? item.balance_diff_changes : '-'}</td>
                             <td>${item.balance_diff_change_ratio !== null && item.balance_diff_change_ratio !== undefined ? item.balance_diff_change_ratio.toFixed(4) : '-'}</td>
@@ -706,12 +712,25 @@
                 console.error('Error loading statements:', error);
                 document.getElementById('statements-tbody').innerHTML = `
                     <tr>
-                        <td colspan="20" style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                        <td colspan="22" style="text-align: center; padding: 2rem; color: #ff6b6b;">
                             Error loading statements: ${error.message}
                         </td>
                     </tr>
                 `;
             }
+        }
+
+        function getBalanceMatchBadge(item) {
+            if (item.processing_status === 'IMPORTED') {
+                return '<span style="color: #888;">Not Processed</span>';
+            }
+
+            if (item.balance_match === 'Success') {
+                return '<span class="status-pass">Success</span>';
+            } else if (item.balance_match === 'Failed') {
+                return '<span class="status-fail">Failed</span>';
+            }
+            return '<span style="color: #888;">-</span>';
         }
 
         function getVerificationBadge(item) {
@@ -727,6 +746,21 @@
                 return '<span class="status-warning">WARNING</span>';
             }
             return '<span style="color: #888;">N/A</span>';
+        }
+
+        function getVerificationReason(item) {
+            if (item.processing_status === 'IMPORTED') {
+                return '<span style="color: #888;">-</span>';
+            }
+
+            if (item.verification_reason) {
+                // Truncate to 50 characters
+                const reason = item.verification_reason.length > 50
+                    ? item.verification_reason.substring(0, 50) + '...'
+                    : item.verification_reason;
+                return `<span title="${item.verification_reason}">${reason}</span>`;
+            }
+            return '<span style="color: #888;">-</span>';
         }
 
         function formatDate(dateStr) {
