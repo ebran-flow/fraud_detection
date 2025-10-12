@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Parallel Processing for UATL Statements
+Parallel Import for Airtel (UMTN) Statements
 
-Processes multiple statements in parallel using multiprocessing.
-Only handles upload phase (parse + save to raw_statements + metadata).
+Imports multiple airtel statements in parallel using multiprocessing.
+Handles upload phase (parse + save to raw_statements + metadata).
 
 Usage:
-    python process_parallel.py --workers 32              # 32 parallel workers
-    python process_parallel.py --workers 24 --dry-run    # Preview with 24 workers
-    python process_parallel.py --workers 16 --month 2025-10  # Specific month
+    python import_airtel_parallel.py --workers 8              # 8 parallel workers
+    python import_airtel_parallel.py --workers 12 --dry-run   # Preview with 12 workers
+    python import_airtel_parallel.py --workers 8 --month 2025-10  # Specific month
 """
 
 import sys
@@ -39,7 +39,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('process_parallel.log'),
+        logging.FileHandler('import_airtel_parallel.log'),
         logging.StreamHandler()
     ]
 )
@@ -49,13 +49,13 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).parent
 BACKEND_DIR = SCRIPT_DIR / "backend"
 MAPPER_CSV = BACKEND_DIR / "docs" / "data" / "statements" / "mapper.csv"
-EXTRACTED_DIR = BACKEND_DIR / "docs" / "data" / "UATL" / "extracted"
-PROVIDER_CODE = "UATL"
+EXTRACTED_DIR = BACKEND_DIR / "docs" / "data" / "UMTN" / "extracted"
+PROVIDER_CODE = "UMTN"
 
 
-def read_uatl_statements(mapper_csv: Path, target_month: str = None):
+def read_airtel_statements(mapper_csv: Path, target_month: str = None):
     """
-    Read mapper.csv and filter UATL statements
+    Read mapper.csv and filter Airtel (UMTN) statements
     Sorts by date (newest first)
 
     Args:
@@ -67,8 +67,8 @@ def read_uatl_statements(mapper_csv: Path, target_month: str = None):
     with open(mapper_csv, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Filter for UATL
-            if row['acc_prvdr_code'] != 'UATL':
+            # Filter for UMTN (Airtel)
+            if row['acc_prvdr_code'] != 'UMTN':
                 continue
 
             # Optional month filter
@@ -107,7 +107,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
             return {
                 'status': 'skipped',
                 'run_id': run_id,
-                'message': 'Already uploaded'
+                'message': 'Already imported'
             }
 
         # Find file
@@ -123,7 +123,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
             return {
                 'status': 'dry_run',
                 'run_id': run_id,
-                'message': f'Would upload {file_path.name}'
+                'message': f'Would import {file_path.name}'
             }
 
         # Create own database session
@@ -135,7 +135,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
                 return {
                     'status': 'skipped',
                     'run_id': run_id,
-                    'message': 'Already uploaded (race condition)'
+                    'message': 'Already imported (race condition)'
                 }
 
             # Get parser
@@ -155,7 +155,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
             return {
                 'status': 'success',
                 'run_id': run_id,
-                'message': f'Uploaded {len(raw_statements)} transactions',
+                'message': f'Imported {len(raw_statements)} transactions',
                 'count': len(raw_statements)
             }
 
@@ -212,8 +212,8 @@ def log_progress(result, counter, total, start_time):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Parallel processing for UATL statements')
-    parser.add_argument('--workers', type=int, default=24, help='Number of parallel workers (default: 24)')
+    parser = argparse.ArgumentParser(description='Parallel import for Airtel (UMTN) statements')
+    parser.add_argument('--workers', type=int, default=8, help='Number of parallel workers (default: 8)')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--month', type=str, help='Filter by specific month (e.g., 2025-09)')
     args = parser.parse_args()
@@ -237,20 +237,20 @@ def main():
     start_time = datetime.now()
     logger.info(f"\n{'='*70}")
     if args.month:
-        logger.info(f"PARALLEL PROCESS {args.month} UATL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
+        logger.info(f"PARALLEL IMPORT {args.month} AIRTEL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
     else:
-        logger.info(f"PARALLEL PROCESS ALL UATL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
+        logger.info(f"PARALLEL IMPORT ALL AIRTEL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
     logger.info(f"Workers: {args.workers}")
     logger.info(f"{'='*70}\n")
 
     # Read mapper
     logger.info("Reading mapper.csv...")
-    statements = read_uatl_statements(MAPPER_CSV, target_month=args.month)
+    statements = read_airtel_statements(MAPPER_CSV, target_month=args.month)
 
     if args.month:
-        logger.info(f"Found {len(statements)} statements from {args.month}\n")
+        logger.info(f"Found {len(statements)} Airtel statements from {args.month}\n")
     else:
-        logger.info(f"Found {len(statements)} UATL statements\n")
+        logger.info(f"Found {len(statements)} Airtel statements\n")
         if len(statements) > 0:
             logger.info(f"Date range: {statements[0]['created_date']} to {statements[-1]['created_date']}\n")
 
@@ -262,21 +262,21 @@ def main():
     logger.info("Pre-loading existing run_ids from database...")
     db = SessionLocal()
     try:
-        # Get all existing UATL run_ids
+        # Get all existing UMTN run_ids
         existing_run_ids = set(crud.get_all_run_ids(db, PROVIDER_CODE))
         logger.info(f"Found {len(existing_run_ids)} existing run_ids in database\n")
     finally:
         db.close()
 
-    # Filter out already uploaded statements
+    # Filter out already imported statements
     statements_to_process = [s for s in statements if s['run_id'] not in existing_run_ids]
-    already_uploaded = len(statements) - len(statements_to_process)
+    already_imported = len(statements) - len(statements_to_process)
 
-    logger.info(f"Already uploaded: {already_uploaded}")
+    logger.info(f"Already imported: {already_imported}")
     logger.info(f"To process: {len(statements_to_process)}\n")
 
     if not statements_to_process:
-        logger.info("No new statements to process")
+        logger.info("No new statements to import")
         return 0
 
     # Setup progress tracking
@@ -296,7 +296,7 @@ def main():
     )
 
     # Process in parallel
-    logger.info(f"Starting parallel processing with {args.workers} workers...\n")
+    logger.info(f"Starting parallel import with {args.workers} workers...\n")
 
     with Pool(processes=args.workers) as pool:
         for result in pool.imap_unordered(worker_func, statements_to_process):
@@ -308,7 +308,7 @@ def main():
     logger.info(f"SUMMARY")
     logger.info(f"{'='*70}")
     logger.info(f"Total statements: {len(statements)}")
-    logger.info(f"Already uploaded:  {already_uploaded}")
+    logger.info(f"Already imported:  {already_imported}")
     logger.info(f"Processed:         {len(statements_to_process)}")
     logger.info(f"✅ Success:        {counter.get('success', 0)}")
     logger.info(f"⏭️  Skipped:        {counter.get('skipped', 0)}")
@@ -316,7 +316,8 @@ def main():
     logger.info(f"❌ Errors:         {counter.get('error', 0)}")
     logger.info(f"{'='*70}")
     logger.info(f"Duration: {duration}")
-    logger.info(f"Average speed: {len(statements_to_process) / duration.total_seconds():.2f} statements/second")
+    if len(statements_to_process) > 0:
+        logger.info(f"Average speed: {len(statements_to_process) / duration.total_seconds():.2f} statements/second")
     logger.info(f"✅ Complete!\n")
 
     return 0
