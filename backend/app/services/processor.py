@@ -194,11 +194,6 @@ def detect_special_transactions(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[dealloc_mask, 'is_special_txn'] = True
     df.loc[dealloc_mask, 'special_txn_type'] = 'Deallocation Transfer'
 
-    # Transaction Reversal
-    reversal_mask = df['description'].str.contains('Reversal', case=False, na=False)
-    df.loc[reversal_mask, 'is_special_txn'] = True
-    df.loc[reversal_mask, 'special_txn_type'] = 'Transaction Reversal'
-
     # Rollback
     rollback_mask = df['description'].str.contains('Rollback', case=False, na=False)
     df.loc[rollback_mask, 'is_special_txn'] = True
@@ -340,15 +335,13 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             df.at[df.index[idx], 'balance_diff'] = balance_diff
 
         # For other special transactions (Deallocation, Reversal, Rollback),
-        # skip balance calculation and keep the previous running balance
+        # copy both calculated_running_balance and balance_diff from previous row
         elif row.get('is_special_txn', False):
-            # Don't update running_balance - it stays the same
+            # Don't update running_balance - keep it the same
+            # Copy balance_diff from previous row as well
             logger.debug(f"Skipping balance calculation for special transaction: {row.get('special_txn_type')}")
             df.at[df.index[idx], 'calculated_running_balance'] = running_balance
-
-            # Calculate difference from statement balance
-            stmt_balance = float(row[balance_field])
-            balance_diff = running_balance - stmt_balance
+            balance_diff = prev_diff if prev_diff is not None else 0.0
             df.at[df.index[idx], 'balance_diff'] = balance_diff
 
         else:

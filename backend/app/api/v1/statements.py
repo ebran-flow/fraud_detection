@@ -18,6 +18,31 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+@router.get("/filter-options")
+async def get_filter_options(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Get available options for dropdown filters (MIME types and formats)
+    """
+    try:
+        # Get distinct MIME types
+        mime_query = "SELECT DISTINCT mime FROM unified_statements WHERE mime IS NOT NULL ORDER BY mime"
+        mime_result = db.execute(text(mime_query)).fetchall()
+        mime_types = [row[0] for row in mime_result]
+
+        # Get distinct formats
+        format_query = "SELECT DISTINCT format FROM unified_statements WHERE format IS NOT NULL ORDER BY format"
+        format_result = db.execute(text(format_query)).fetchall()
+        formats = [row[0] for row in format_result]
+
+        return {
+            'mime_types': mime_types,
+            'formats': formats
+        }
+    except Exception as e:
+        logger.error(f"Error fetching filter options: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching filter options: {str(e)}")
+
+
 @router.get("/list", response_model=ListResponse)
 async def list_statements(
     page: int = Query(1, ge=1),
@@ -96,6 +121,10 @@ async def list_unified_statements(
     to_date: Optional[str] = Query(None, description="Filter by submitted_date <= to_date (YYYY-MM-DD)"),
     imported_from: Optional[str] = Query(None, description="Filter by imported_at >= imported_from (YYYY-MM-DDTHH:MM)"),
     imported_to: Optional[str] = Query(None, description="Filter by imported_at <= imported_to (YYYY-MM-DDTHH:MM)"),
+    processed_from: Optional[str] = Query(None, description="Filter by processed_at >= processed_from (YYYY-MM-DDTHH:MM)"),
+    processed_to: Optional[str] = Query(None, description="Filter by processed_at <= processed_to (YYYY-MM-DDTHH:MM)"),
+    mime: Optional[str] = Query(None, description="Filter by MIME type"),
+    format: Optional[str] = Query(None, description="Filter by format"),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
@@ -110,6 +139,11 @@ async def list_unified_statements(
     - status: IMPORT_FAILED, IMPORTED, VERIFIED, VERIFIED_WITH_WARNINGS, VERIFICATION_FAILED, FLAGGED
     - from_date, to_date: Date range for submitted_date
     - imported_from, imported_to: DateTime range for imported_at (when statement was uploaded)
+    - processed_from, processed_to: DateTime range for processed_at (when statement was processed)
+    - mime: MIME type
+    - format: File format
+
+    All filters can be combined in any combination.
     """
     try:
         # Build query
@@ -149,6 +183,18 @@ async def list_unified_statements(
             where_clauses.append(f"imported_at >= '{imported_from}'")
         if imported_to:
             where_clauses.append(f"imported_at <= '{imported_to}'")
+
+        # Processed datetime range filters
+        if processed_from:
+            where_clauses.append(f"processed_at >= '{processed_from}'")
+        if processed_to:
+            where_clauses.append(f"processed_at <= '{processed_to}'")
+
+        # MIME and format filters
+        if mime:
+            where_clauses.append(f"mime = '{mime}'")
+        if format:
+            where_clauses.append(f"format = '{format}'")
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 

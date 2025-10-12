@@ -555,8 +555,30 @@
                         <input type="datetime-local" id="imported-to"
                                style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
                     </div>
-                    <div></div>
-                    <div></div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Processed From:</label>
+                        <input type="datetime-local" id="processed-from"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Processed To (Optional):</label>
+                        <input type="datetime-local" id="processed-to"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">MIME Type:</label>
+                        <select id="mime-filter"
+                                style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Format:</label>
+                        <select id="format-filter"
+                                style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                            <option value="">All</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: end;">
                     <div>
@@ -578,6 +600,7 @@
                         <option value="20" selected>20</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
+                        <option value="999999">All</option>
                     </select>
                 </div>
             </div>
@@ -592,9 +615,12 @@
                             <th>Run ID</th>
                             <th>Provider</th>
                             <th>Account</th>
+                            <th>Format</th>
+                            <th>MIME</th>
                             <th>RM Name</th>
                             <th>Rows</th>
                             <th>Imported</th>
+                            <th>Processed</th>
                             <th>Status</th>
                             <th>Actions</th>
                             <th>Balance Match</th>
@@ -796,6 +822,10 @@
         let currentToDate = '';
         let currentImportedFrom = '';
         let currentImportedTo = '';
+        let currentProcessedFrom = '';
+        let currentProcessedTo = '';
+        let currentMime = '';
+        let currentFormat = '';
 
         // Load statements table
         async function loadStatements(page = 1) {
@@ -816,6 +846,10 @@
                 if (currentToDate) params.append('to_date', currentToDate);
                 if (currentImportedFrom) params.append('imported_from', currentImportedFrom);
                 if (currentImportedTo) params.append('imported_to', currentImportedTo);
+                if (currentProcessedFrom) params.append('processed_from', currentProcessedFrom);
+                if (currentProcessedTo) params.append('processed_to', currentProcessedTo);
+                if (currentMime) params.append('mime', currentMime);
+                if (currentFormat) params.append('format', currentFormat);
 
                 const response = await fetch(`/api/v1/unified-list?${params.toString()}`);
                 const data = await response.json();
@@ -850,9 +884,12 @@
                             <td><span class="selectable">${item.run_id}</span></td>
                             <td>${providerName}</td>
                             <td>${item.acc_number || 'N/A'}</td>
+                            <td>${item.format || 'N/A'}</td>
+                            <td>${item.mime || 'N/A'}</td>
                             <td>${item.rm_name || 'N/A'}</td>
                             <td>${item.num_rows || 0}</td>
                             <td>${formatDate(item.imported_at)}</td>
+                            <td>${formatDate(item.processed_at)}</td>
                             <td><span class="${statusClass}">${statusLabel}</span></td>
                             <td>
                                 <div class="action-cell">
@@ -970,6 +1007,10 @@
             currentToDate = document.getElementById('to-date').value;
             currentImportedFrom = document.getElementById('imported-from').value;
             currentImportedTo = document.getElementById('imported-to').value;
+            currentProcessedFrom = document.getElementById('processed-from').value;
+            currentProcessedTo = document.getElementById('processed-to').value;
+            currentMime = document.getElementById('mime-filter').value;
+            currentFormat = document.getElementById('format-filter').value;
             currentPage = 1; // Reset to first page when filtering
             loadStatements(1);
         }
@@ -991,6 +1032,14 @@
             currentToDate = '';
             currentImportedFrom = '';
             currentImportedTo = '';
+            document.getElementById('processed-from').value = '';
+            document.getElementById('processed-to').value = '';
+            document.getElementById('mime-filter').value = '';
+            document.getElementById('format-filter').value = '';
+            currentProcessedFrom = '';
+            currentProcessedTo = '';
+            currentMime = '';
+            currentFormat = '';
             currentPage = 1;
             loadStatements(1);
         }
@@ -1002,12 +1051,43 @@
         }
 
         // Allow Enter key to trigger search
+        // Load filter options (MIME types and formats)
+        async function loadFilterOptions() {
+            try {
+                const response = await fetch('/api/v1/filter-options');
+                const data = await response.json();
+
+                // Populate MIME type dropdown
+                const mimeSelect = document.getElementById('mime-filter');
+                data.mime_types.forEach(mime => {
+                    const option = document.createElement('option');
+                    option.value = mime;
+                    option.textContent = mime;
+                    mimeSelect.appendChild(option);
+                });
+
+                // Populate format dropdown
+                const formatSelect = document.getElementById('format-filter');
+                data.formats.forEach(format => {
+                    const option = document.createElement('option');
+                    option.value = format;
+                    option.textContent = format;
+                    formatSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('search-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     applyFilters();
                 }
             });
+
+            // Load filter options on page load
+            loadFilterOptions();
         });
 
         function getBalanceMatchBadge(item) {
