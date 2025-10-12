@@ -94,6 +94,8 @@ async def list_unified_statements(
     verification_status: Optional[str] = Query(None),  # PASS or FAIL (deprecated, use 'status')
     from_date: Optional[str] = Query(None, description="Filter by submitted_date >= from_date (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="Filter by submitted_date <= to_date (YYYY-MM-DD)"),
+    imported_from: Optional[str] = Query(None, description="Filter by imported_at >= imported_from (YYYY-MM-DDTHH:MM)"),
+    imported_to: Optional[str] = Query(None, description="Filter by imported_at <= imported_to (YYYY-MM-DDTHH:MM)"),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
@@ -107,6 +109,7 @@ async def list_unified_statements(
     - rm_name: RM name
     - status: IMPORT_FAILED, IMPORTED, VERIFIED, VERIFIED_WITH_WARNINGS, VERIFICATION_FAILED, FLAGGED
     - from_date, to_date: Date range for submitted_date
+    - imported_from, imported_to: DateTime range for imported_at (when statement was uploaded)
     """
     try:
         # Build query
@@ -140,6 +143,12 @@ async def list_unified_statements(
             where_clauses.append(f"submitted_date >= '{from_date}'")
         if to_date:
             where_clauses.append(f"submitted_date <= '{to_date}'")
+
+        # Imported datetime range filters
+        if imported_from:
+            where_clauses.append(f"imported_at >= '{imported_from}'")
+        if imported_to:
+            where_clauses.append(f"imported_at <= '{imported_to}'")
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 

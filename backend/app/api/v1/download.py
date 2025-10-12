@@ -69,7 +69,7 @@ async def download_processed_statements(
 
 @router.get("/download/summary")
 async def download_summary(
-    run_ids: Optional[List[str]] = Query(None),
+    run_ids: Optional[str] = Query(None),  # Accept as string (comma-separated or single)
     run_id: Optional[str] = Query(None),  # Single run_id (preferred)
     acc_number: Optional[str] = Query(None),
     acc_prvdr_code: Optional[str] = Query(None),
@@ -79,14 +79,17 @@ async def download_summary(
     """
     Download summary data as CSV or Excel
     Use run_id parameter for single statement download (recommended)
-    Use run_ids for multiple statements
+    Use run_ids for multiple statements (comma-separated)
     """
-    # Prioritize single run_id if provided
-    if run_id:
-        run_ids = [run_id]
+    # Convert run_ids string to list
+    run_ids_list = None
+    if run_ids:
+        run_ids_list = [rid.strip() for rid in run_ids.split(',')]
+    elif run_id:
+        run_ids_list = [run_id]
     try:
         if format == 'csv':
-            csv_data = export_summary_csv(db, run_ids, acc_number, acc_prvdr_code)
+            csv_data = export_summary_csv(db, run_ids_list, acc_number, acc_prvdr_code)
 
             if not csv_data:
                 raise HTTPException(status_code=404, detail="No data found")
@@ -97,7 +100,7 @@ async def download_summary(
                 headers={"Content-Disposition": "attachment; filename=summary.csv"}
             )
         else:  # excel
-            excel_data = export_summary_excel(db, run_ids, acc_number, acc_prvdr_code)
+            excel_data = export_summary_excel(db, run_ids_list, acc_number, acc_prvdr_code)
 
             if not excel_data:
                 raise HTTPException(status_code=404, detail="No data found")

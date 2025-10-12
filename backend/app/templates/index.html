@@ -477,7 +477,10 @@
                 <h2>📋 All Statements</h2>
                 <div class="action-buttons">
                     <button class="btn btn-primary btn-sm" onclick="downloadAllSummary()">
-                        📊 Download Summary (All)
+                        📊 Download All Summary
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="download-selected-btn" disabled onclick="downloadSelectedSummary()">
+                        📥 Download Selected Summary
                     </button>
                     <button class="btn btn-success btn-sm" id="process-selected-btn" disabled onclick="processSelected()">
                         ⚙️ Process Selected
@@ -536,6 +539,20 @@
                     <div>
                         <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">To Date:</label>
                         <input type="date" id="to-date"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Imported From:</label>
+                        <input type="datetime-local" id="imported-from"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Imported To (Optional):</label>
+                        <input type="datetime-local" id="imported-to"
                                style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
                     </div>
                     <div></div>
@@ -777,6 +794,8 @@
         let currentRmName = '';
         let currentFromDate = '';
         let currentToDate = '';
+        let currentImportedFrom = '';
+        let currentImportedTo = '';
 
         // Load statements table
         async function loadStatements(page = 1) {
@@ -795,6 +814,8 @@
                 if (currentRmName) params.append('rm_name', currentRmName);
                 if (currentFromDate) params.append('from_date', currentFromDate);
                 if (currentToDate) params.append('to_date', currentToDate);
+                if (currentImportedFrom) params.append('imported_from', currentImportedFrom);
+                if (currentImportedTo) params.append('imported_to', currentImportedTo);
 
                 const response = await fetch(`/api/v1/unified-list?${params.toString()}`);
                 const data = await response.json();
@@ -946,6 +967,8 @@
             currentRmName = document.getElementById('rm-name-input').value.trim();
             currentFromDate = document.getElementById('from-date').value;
             currentToDate = document.getElementById('to-date').value;
+            currentImportedFrom = document.getElementById('imported-from').value;
+            currentImportedTo = document.getElementById('imported-to').value;
             currentPage = 1; // Reset to first page when filtering
             loadStatements(1);
         }
@@ -957,12 +980,16 @@
             document.getElementById('rm-name-input').value = '';
             document.getElementById('from-date').value = '';
             document.getElementById('to-date').value = '';
+            document.getElementById('imported-from').value = '';
+            document.getElementById('imported-to').value = '';
             currentSearch = '';
             currentStatus = '';
             currentProvider = '';
             currentRmName = '';
             currentFromDate = '';
             currentToDate = '';
+            currentImportedFrom = '';
+            currentImportedTo = '';
             currentPage = 1;
             loadStatements(1);
         }
@@ -1091,6 +1118,9 @@
 
             // Enable process button only if IMPORTED statements are selected
             document.getElementById('process-selected-btn').disabled = importedCount === 0;
+
+            // Enable download selected button if any statements are selected
+            document.getElementById('download-selected-btn').disabled = selectedRunIds.size === 0;
 
             // Enable delete buttons if any statements are selected
             document.getElementById('delete-processed-btn').disabled = selectedRunIds.size === 0;
@@ -1247,6 +1277,37 @@
                 document.body.removeChild(a);
             } catch (error) {
                 alert('Error downloading summary: ' + error.message);
+            }
+        }
+
+        async function downloadSelectedSummary() {
+            if (selectedRunIds.size === 0) {
+                alert('Please select at least one statement');
+                return;
+            }
+
+            try {
+                const runIdsArray = Array.from(selectedRunIds);
+                const runIdsParam = runIdsArray.join(',');
+                const filename = `summary_selected_${runIdsArray.length}_statements.csv`;
+
+                const response = await fetch(`/api/v1/download/summary?format=csv&run_ids=${encodeURIComponent(runIdsParam)}`);
+
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Error downloading selected summary: ' + error.message);
             }
         }
 

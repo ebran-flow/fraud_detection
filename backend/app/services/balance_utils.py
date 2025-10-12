@@ -10,6 +10,36 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def calculate_implicit_fees_and_cashbacks(amount: float, description: str) -> float:
+    """
+    Calculate implicit fees and cashbacks based on transaction description.
+
+    Args:
+        amount: Transaction amount
+        description: Transaction description
+
+    Returns:
+        Additional fee/cashback amount (positive = fee to deduct, negative = cashback to add)
+    """
+    additional_fee = 0.0
+
+    # Case 1: "Received From IND02" has additional 0.5% commission
+    # This commission is not included in the fee field but is deducted from the balance
+    # Note: IND01 does NOT have this commission, only IND02
+    if description and 'IND02' in description.upper() and 'IND01' not in description.upper():
+        additional_fee += abs(amount) * 0.005
+        logger.debug(f"IND02 transaction detected: adding 0.5% commission ({abs(amount) * 0.005:.2f}) to fee")
+
+    # Case 2: "Merchant Payment Other Single Step" has 4% cashback
+    # The fee shown is NOT deducted; instead there's a 4% refund added to balance
+    if description and 'MERCHANT PAYMENT OTHER SINGLE STEP' in description.upper():
+        cashback = abs(amount) * 0.04
+        additional_fee -= cashback  # Negative fee = cashback (added to balance)
+        logger.debug(f"Merchant Payment detected: adding 4% cashback ({cashback:.2f}) to balance")
+
+    return additional_fee
+
+
 def is_amount_signed(df: pd.DataFrame, pdf_format: int, provider_code: str) -> bool:
     """
     Determine if amounts in the dataframe are signed or unsigned.
@@ -34,7 +64,8 @@ def is_amount_signed(df: pd.DataFrame, pdf_format: int, provider_code: str) -> b
 
 
 def calculate_opening_balance(first_balance: float, first_amount: float, first_fee: float,
-                              first_direction: str, is_signed: bool, pdf_format: int) -> float:
+                              first_direction: str, is_signed: bool, pdf_format: int,
+                              first_description: str = '') -> float:
     """
     Calculate opening balance from first transaction.
 
@@ -45,30 +76,40 @@ def calculate_opening_balance(first_balance: float, first_amount: float, first_f
         first_direction: Transaction direction ('credit', 'debit', 'cr', 'dr')
         is_signed: Whether amounts are signed
         pdf_format: PDF format (1 or 2)
+        first_description: Transaction description (used to detect special fees)
 
     Returns:
         Calculated opening balance
     """
     direction = str(first_direction).lower()
 
+    # Convert to float to avoid Decimal/float type issues
+    first_balance = float(first_balance)
+    first_amount = float(first_amount)
+    first_fee = float(first_fee)
+
+    # Calculate implicit fees and cashbacks (DRY - single source of truth)
+    additional_fee = calculate_implicit_fees_and_cashbacks(first_amount, first_description)
+
     if is_signed:
         # Signed amounts
         if pdf_format == 2:
             # Format 2: fees already included in signed amount, don't subtract separately
-            return first_balance - first_amount
+            return first_balance - first_amount + additional_fee
         else:
-            # Format 1 CSV: fees separate, subtract both
-            return first_balance - first_amount - first_fee
+            # Format 1 CSV: fees separate, subtract both + additional_fee
+            return first_balance - first_amount - first_fee + additional_fee
     else:
         # Unsigned amounts (Format 1 PDF): use direction
         if direction in ['credit', 'cr']:
-            return first_balance - first_amount - first_fee
+            return first_balance - first_amount - first_fee + additional_fee
         else:  # debit/dr
-            return first_balance + first_amount + first_fee
+            return first_balance + first_amount + first_fee + additional_fee
 
 
 def apply_transaction_to_balance(balance: float, amount: float, fee: float,
-                                 direction: str, is_signed: bool, pdf_format: int = 1) -> float:
+                                 direction: str, is_signed: bool, pdf_format: int = 1,
+                                 description: str = '') -> float:
     """
     Apply a single transaction to running balance.
 
@@ -79,26 +120,35 @@ def apply_transaction_to_balance(balance: float, amount: float, fee: float,
         direction: Transaction direction ('credit', 'debit', 'cr', 'dr')
         is_signed: Whether amounts are signed
         pdf_format: PDF format (1 or 2)
+        description: Transaction description (used to detect special fees)
 
     Returns:
         New balance after applying transaction
     """
     direction = str(direction).lower()
 
+    # Convert to float to avoid Decimal/float type issues
+    balance = float(balance)
+    amount = float(amount)
+    fee = float(fee)
+
+    # Calculate implicit fees and cashbacks (DRY - single source of truth)
+    additional_fee = calculate_implicit_fees_and_cashbacks(amount, description)
+
     if is_signed:
         # Signed amounts
         if pdf_format == 2:
             # Format 2: fees already included in signed amount, just add amount
-            return balance + amount
+            return balance + amount - additional_fee
         else:
-            # Format 1 CSV: fees separate, add amount and subtract fee
-            return balance + amount - fee
+            # Format 1 CSV: fees separate, add amount and subtract fee + additional_fee
+            return balance + amount - fee - additional_fee
     else:
         # Unsigned amounts (Format 1 PDF): use direction
         if direction in ['credit', 'cr']:
-            return balance + amount - fee
+            return balance + amount - fee - additional_fee
         else:  # debit/dr
-            return balance - amount - fee
+            return balance - amount - fee - additional_fee
 
 
 def calculate_total_credits_debits(df: pd.DataFrame, pdf_format: int,

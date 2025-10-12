@@ -183,9 +183,9 @@ def detect_special_transactions(df: pd.DataFrame) -> pd.DataFrame:
     df['is_special_txn'] = False
     df['special_txn_type'] = None
 
-    # Commission Disbursement
-    commission_mask = df['description'].str.contains('Commission', case=False, na=False) & \
-                      df['description'].str.contains('Disbursement', case=False, na=False)
+    # Commission Disbursement (exact pattern only, not "Received From ... Commissions Disbursement Wallet")
+    # Pattern: "Commission Disbursement -" (starts with this exact phrase)
+    commission_mask = df['description'].str.match(r'^Commission Disbursement\s*', case=False, na=False)
     df.loc[commission_mask, 'is_special_txn'] = True
     df.loc[commission_mask, 'special_txn_type'] = 'Commission Disbursement'
 
@@ -263,15 +263,16 @@ def optimize_same_timestamp_transactions(df: pd.DataFrame, pdf_format: int, bala
                             row['fee'],
                             str(row.get('txn_direction', '')),
                             amounts_are_signed,
-                            pdf_format
+                            pdf_format,
+                            str(row.get('description', ''))
                         )
 
                         # Check if it matches the row's statement balance
-                        if abs(expected_bal - row[balance_field]) < 0.01:
+                        if abs(expected_bal - float(row[balance_field])) < 0.01:
                             score += 1
 
                         # Update running balance to this row's statement balance
-                        running_bal = row[balance_field]
+                        running_bal = float(row[balance_field])
 
                     if score > best_score:
                         best_score = score
@@ -311,9 +312,10 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     first_amount = first_row['amount']
     first_fee = first_row['fee']
     first_direction = str(first_row.get('txn_direction', ''))
+    first_description = str(first_row.get('description', ''))
 
     opening_balance = calculate_opening_balance(
-        first_balance, first_amount, first_fee, first_direction, amounts_signed, pdf_format
+        first_balance, first_amount, first_fee, first_direction, amounts_signed, pdf_format, first_description
     )
 
     # Calculate running balance for each transaction
@@ -324,20 +326,27 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     for idx in range(len(df)):
         row = df.iloc[idx]
 
-        # Apply transaction to running balance
-        running_balance = apply_transaction_to_balance(
-            running_balance,
-            row['amount'],
-            row['fee'],
-            str(row.get('txn_direction', '')),
-            amounts_signed,
-            pdf_format
-        )
+        # For special transactions (Commission Disbursement, Deallocation, Reversal, Rollback),
+        # skip balance calculation and keep the previous running balance
+        if row.get('is_special_txn', False):
+            # Don't update running_balance - it stays the same
+            logger.debug(f"Skipping balance calculation for special transaction: {row.get('special_txn_type')}")
+        else:
+            # Apply transaction to running balance for normal transactions
+            running_balance = apply_transaction_to_balance(
+                running_balance,
+                row['amount'],
+                row['fee'],
+                str(row.get('txn_direction', '')),
+                amounts_signed,
+                pdf_format,
+                str(row.get('description', ''))
+            )
 
         df.at[df.index[idx], 'calculated_running_balance'] = running_balance
 
         # Calculate difference from statement balance
-        stmt_balance = row[balance_field]
+        stmt_balance = float(row[balance_field])
         balance_diff = running_balance - stmt_balance
         df.at[df.index[idx], 'balance_diff'] = balance_diff
 
