@@ -12,7 +12,6 @@ from datetime import datetime
 # Import PDF parsing utilities
 from .pdf_utils import (
     extract_data_from_pdf,
-    compute_balance_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,9 +138,6 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
         # Calculate MD5 hash
         sheet_md5 = hashlib.md5(df.to_csv(index=False).encode()).hexdigest()
 
-        # Compute balance summary
-        balance_summary = compute_balance_summary(df, acc_number, os.path.basename(pdf_path))
-
         # Prepare raw statements for database insertion
         raw_statements = []
         for idx, row in df.iterrows():
@@ -171,10 +167,10 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
             'rm_name': None,  # Will be populated from mapper
             'num_rows': len(df),
             'sheet_md5': sheet_md5,
-            'summary_opening_balance': float(balance_summary.get('opening_balance', 0)),
-            'summary_closing_balance': float(balance_summary.get('stmt_closing_balance', 0)),
-            'stmt_opening_balance': float(df.iloc[0]['balance']) if len(df) > 0 else None,
-            'stmt_closing_balance': float(df.iloc[-1]['balance']) if len(df) > 0 else None,
+            'summary_opening_balance': None,  # Will be extracted from PDF summary section if available
+            'summary_closing_balance': None,  # Will be extracted from PDF summary section if available
+            'first_balance': float(df.iloc[0]['balance']) if len(df) > 0 else None,
+            'last_balance': float(df.iloc[-1]['balance']) if len(df) > 0 else None,
             # Summary fields extracted from Airtel Format 1 PDFs
             'summary_email_address': summary_email_address,
             'summary_customer_name': summary_customer_name,

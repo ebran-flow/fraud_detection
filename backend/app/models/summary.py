@@ -19,8 +19,8 @@ class Summary(Base):
     sheet_md5 = Column(String(64))
     summary_opening_balance = Column(Numeric(18, 2))
     summary_closing_balance = Column(Numeric(18, 2))
-    stmt_opening_balance = Column(Numeric(18, 2))
-    stmt_closing_balance = Column(Numeric(18, 2))
+    first_balance = Column(Numeric(18, 2))
+    last_balance = Column(Numeric(18, 2))
     duplicate_count = Column(Integer, default=0)
     balance_match = Column(Enum('Success', 'Failed', name='balance_match_enum'))
     verification_status = Column(String(64))
@@ -57,8 +57,8 @@ class Summary(Base):
             'sheet_md5': self.sheet_md5,
             'summary_opening_balance': float(self.summary_opening_balance) if self.summary_opening_balance else None,
             'summary_closing_balance': float(self.summary_closing_balance) if self.summary_closing_balance else None,
-            'stmt_opening_balance': float(self.stmt_opening_balance) if self.stmt_opening_balance else None,
-            'stmt_closing_balance': float(self.stmt_closing_balance) if self.stmt_closing_balance else None,
+            'first_balance': float(self.first_balance) if self.first_balance else None,
+            'last_balance': float(self.last_balance) if self.last_balance else None,
             'duplicate_count': self.duplicate_count,
             'balance_match': self.balance_match,
             'verification_status': self.verification_status,

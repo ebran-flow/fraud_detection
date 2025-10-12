@@ -86,12 +86,17 @@ def parse_uatl_csv(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], D
         else:
             transactions = parse_format2_csv(df, run_id, metadata)
 
-        # Update metadata
+        # Update metadata with first and last balance from transactions
+        first_balance = transactions[0]['balance'] if len(transactions) > 0 else None
+        last_balance = transactions[-1]['balance'] if len(transactions) > 0 else None
+
         metadata.update({
             'run_id': run_id,
             'acc_prvdr_code': 'UATL',
             'format': f'format_{pdf_format}',  # e.g., 'format_1' or 'format_2'
             'num_rows': len(transactions),
+            'first_balance': first_balance,
+            'last_balance': last_balance,
             'parsing_status': 'SUCCESS',
             'parsing_error': None
         })
@@ -125,21 +130,21 @@ def extract_metadata_from_csv(content: str) -> Dict[str, Any]:
     if match:
         metadata['acc_number'] = match.group(1).strip()
 
-    # Extract opening balance
+    # Extract opening balance from summary section
     match = re.search(r'Opening Balance,(?:Ugx\s*)?[\",]?([0-9,]+\.?\d*)', content)
     if match:
         balance_str = match.group(1).replace(',', '')
         try:
-            metadata['stmt_opening_balance'] = float(balance_str)
+            metadata['summary_opening_balance'] = float(balance_str)
         except:
             pass
 
-    # Extract closing balance
+    # Extract closing balance from summary section
     match = re.search(r'Closing Balance,(?:Ugx\s*)?[\",]?([0-9,]+\.?\d*)', content)
     if match:
         balance_str = match.group(1).replace(',', '')
         try:
-            metadata['stmt_closing_balance'] = float(balance_str)
+            metadata['summary_closing_balance'] = float(balance_str)
         except:
             pass
 

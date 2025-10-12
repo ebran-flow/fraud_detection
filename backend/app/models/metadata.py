@@ -21,8 +21,8 @@ class Metadata(Base):
     sheet_md5 = Column(String(64))
     summary_opening_balance = Column(Numeric(18, 2))
     summary_closing_balance = Column(Numeric(18, 2))
-    stmt_opening_balance = Column(Numeric(18, 2))
-    stmt_closing_balance = Column(Numeric(18, 2))
+    first_balance = Column(Numeric(18, 2))
+    last_balance = Column(Numeric(18, 2))
     # Summary fields extracted from Airtel Format 1 PDFs
     summary_email_address = Column(String(255))  # Email Address from format 1
     summary_customer_name = Column(String(255))  # Customer Name from format 1
@@ -85,8 +85,8 @@ class Metadata(Base):
             'sheet_md5': self.sheet_md5,
             'summary_opening_balance': float(self.summary_opening_balance) if self.summary_opening_balance else None,
             'summary_closing_balance': float(self.summary_closing_balance) if self.summary_closing_balance else None,
-            'stmt_opening_balance': float(self.stmt_opening_balance) if self.stmt_opening_balance else None,
-            'stmt_closing_balance': float(self.stmt_closing_balance) if self.stmt_closing_balance else None,
+            'first_balance': float(self.first_balance) if self.first_balance else None,
+            'last_balance': float(self.last_balance) if self.last_balance else None,
             'summary_email_address': self.summary_email_address,
             'summary_customer_name': self.summary_customer_name,
             'summary_mobile_number': self.summary_mobile_number,

@@ -93,9 +93,9 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
         first_date = raw_statements[0]['txn_date'] if raw_statements else None
         last_date = raw_statements[-1]['txn_date'] if raw_statements else None
 
-        # Calculate opening and closing balances (from float_balance)
-        opening_balance = raw_statements[0]['float_balance'] - raw_statements[0]['amount'] if raw_statements else 0
-        closing_balance = raw_statements[-1]['float_balance'] if raw_statements else 0
+        # Get first and last balance from float_balance column
+        first_balance = raw_statements[0]['float_balance'] if raw_statements else None
+        last_balance = raw_statements[-1]['float_balance'] if raw_statements else None
 
         # Prepare metadata
         metadata = {
@@ -106,10 +106,10 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
             'rm_name': None,  # Will be populated from mapper
             'num_rows': len(df),
             'sheet_md5': sheet_md5,
-            'summary_opening_balance': opening_balance,
-            'summary_closing_balance': closing_balance,
-            'stmt_opening_balance': opening_balance,
-            'stmt_closing_balance': closing_balance,
+            'summary_opening_balance': None,  # MTN doesn't have a summary section
+            'summary_closing_balance': None,  # MTN doesn't have a summary section
+            'first_balance': first_balance,
+            'last_balance': last_balance,
             'meta_title': f'MTN Statement {first_date.strftime("%Y-%m-%d") if first_date else ""}',
             'meta_author': 'MTN Uganda',
             'meta_producer': 'MTN Mobile Money',
