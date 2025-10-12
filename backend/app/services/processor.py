@@ -15,9 +15,15 @@ from ..models.summary import Summary
 from . import crud_v2 as crud
 from .provider_factory import ProviderFactory
 from .balance_utils import (
-    is_amount_signed,
-    calculate_opening_balance,
-    apply_transaction_to_balance,
+    is_format1_csv,
+    calculate_opening_balance_format1_pdf,
+    calculate_opening_balance_format1_csv,
+    calculate_opening_balance_format2,
+    calculate_opening_balance_mtn,
+    apply_transaction_format1_pdf,
+    apply_transaction_format1_csv,
+    apply_transaction_format2,
+    apply_transaction_mtn,
     calculate_total_credits_debits
 )
 
@@ -216,7 +222,7 @@ def optimize_same_timestamp_transactions(df: pd.DataFrame, pdf_format: int, bala
     df = df.sort_values(['txn_date', balance_field], ascending=[True, False]).reset_index(drop=True)
 
     # Detect if amounts are signed (CSV) or unsigned (PDF)
-    amounts_are_signed = is_amount_signed(df, pdf_format, 'UATL')
+    is_csv = is_format1_csv(df, pdf_format)
 
     # Group by timestamp and optimize each group
     optimized_groups = []
@@ -251,16 +257,11 @@ def optimize_same_timestamp_transactions(df: pd.DataFrame, pdf_format: int, bala
                     for i in range(len(test_df)):
                         row = test_df.iloc[i]
 
-                        # Apply transaction to get expected balance
-                        expected_bal = apply_transaction_to_balance(
-                            running_bal,
-                            row['amount'],
-                            row['fee'],
-                            str(row.get('txn_direction', '')),
-                            amounts_are_signed,
-                            pdf_format,
-                            str(row.get('description', ''))
-                        )
+                        # Apply transaction to get expected balance using format-specific function
+                        if is_csv:
+                            expected_bal = apply_transaction_format1_csv(running_bal, row['amount'], row['fee'], str(row.get('description', '')))
+                        else:
+                            expected_bal = apply_transaction_format1_pdf(running_bal, row['amount'], row['fee'], str(row.get('txn_direction', '')), str(row.get('description', '')))
 
                         # Check if it matches the row's statement balance
                         if abs(expected_bal - float(row[balance_field])) < 0.01:
@@ -298,10 +299,7 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     if df.empty:
         return df
 
-    # Determine if amounts are signed or unsigned
-    amounts_signed = is_amount_signed(df, pdf_format, provider_code)
-
-    # Calculate opening balance from first transaction
+    # Calculate opening balance using format-specific function
     first_row = df.iloc[0]
     first_balance = first_row[balance_field]
     first_amount = first_row['amount']
@@ -309,9 +307,15 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     first_direction = str(first_row.get('txn_direction', ''))
     first_description = str(first_row.get('description', ''))
 
-    opening_balance = calculate_opening_balance(
-        first_balance, first_amount, first_fee, first_direction, amounts_signed, pdf_format, first_description
-    )
+    # Choose appropriate function based on format and provider
+    if provider_code == 'UMTN':
+        opening_balance = calculate_opening_balance_mtn(first_balance, first_amount)
+    elif pdf_format == 2:
+        opening_balance = calculate_opening_balance_format2(first_balance, first_amount)
+    elif is_format1_csv(df, pdf_format):
+        opening_balance = calculate_opening_balance_format1_csv(first_balance, first_amount, first_fee, first_description)
+    else:  # Format 1 PDF
+        opening_balance = calculate_opening_balance_format1_pdf(first_balance, first_amount, first_fee, first_direction, first_description)
 
     # Calculate running balance for each transaction
     running_balance = opening_balance
@@ -321,8 +325,15 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     for idx in range(len(df)):
         row = df.iloc[idx]
 
+        # Handle duplicates: don't apply to running balance, copy from previous row
+        if row.get('is_duplicate', False):
+            logger.debug(f"Skipping balance calculation for duplicate transaction")
+            df.at[df.index[idx], 'calculated_running_balance'] = running_balance
+            balance_diff = prev_diff if prev_diff is not None else 0.0
+            df.at[df.index[idx], 'balance_diff'] = balance_diff
+
         # Handle Commission Disbursement specially (moves money between Regular Biz and Commission wallets)
-        if row.get('is_special_txn', False) and row.get('special_txn_type') == 'Commission Disbursement':
+        elif row.get('is_special_txn', False) and row.get('special_txn_type') == 'Commission Disbursement':
             # For Commission Disbursement: invert the amount (debit = add, credit = subtract)
             # This maintains the running balance for the Regular Biz wallet
             inverted_amount = -float(row['amount'])  # Invert: if debited, add; if credited, subtract
@@ -345,16 +356,20 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             df.at[df.index[idx], 'balance_diff'] = balance_diff
 
         else:
-            # Apply transaction to running balance for normal transactions
-            running_balance = apply_transaction_to_balance(
-                running_balance,
-                row['amount'],
-                row['fee'],
-                str(row.get('txn_direction', '')),
-                amounts_signed,
-                pdf_format,
-                str(row.get('description', ''))
-            )
+            # Apply transaction to running balance using format-specific function
+            amount = row['amount']
+            fee = row['fee']
+            direction = str(row.get('txn_direction', ''))
+            description = str(row.get('description', ''))
+
+            if provider_code == 'UMTN':
+                running_balance = apply_transaction_mtn(running_balance, amount)
+            elif pdf_format == 2:
+                running_balance = apply_transaction_format2(running_balance, amount)
+            elif is_format1_csv(df, pdf_format):
+                running_balance = apply_transaction_format1_csv(running_balance, amount, fee, description)
+            else:  # Format 1 PDF
+                running_balance = apply_transaction_format1_pdf(running_balance, amount, fee, direction, description)
 
             df.at[df.index[idx], 'calculated_running_balance'] = running_balance
 

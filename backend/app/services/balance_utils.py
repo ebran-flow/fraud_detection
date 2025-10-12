@@ -1,7 +1,6 @@
 """
 Balance Calculation Utilities
-Centralizes logic for handling signed/unsigned amounts and balance calculations
-Following DRY principle to avoid duplication across processor and parsers
+Separate logic for Format 1 and Format 2 to avoid confusion and bugs
 """
 import logging
 from typing import Tuple
@@ -10,145 +9,262 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-def calculate_implicit_fees_and_cashbacks(amount: float, description: str) -> float:
+# ============================================================================
+# FORMAT 1 LOGIC (PDF with unsigned amounts + direction OR CSV with signed amounts)
+# ============================================================================
+
+def calculate_implicit_fees_format1(amount: float, description: str) -> float:
     """
-    Calculate implicit fees and cashbacks based on transaction description.
+    Calculate implicit fees and cashbacks for Format 1.
+
+    Format 1 specifics:
+    - IND02 transactions have 0.5% commission not shown in fee field
+    - Merchant Payment Other Single Step has 4% cashback
 
     Args:
-        amount: Transaction amount
+        amount: Transaction amount (signed for CSV, unsigned for PDF)
         description: Transaction description
 
     Returns:
-        Additional fee/cashback amount (positive = fee to deduct, negative = cashback to add)
+        Additional fee/cashback (positive = fee to deduct, negative = cashback to add)
     """
     additional_fee = 0.0
 
-    # Case 1: "Received From IND02" has additional 0.5% commission
-    # This commission is not included in the fee field but is deducted from the balance
-    # Note: IND01 does NOT have this commission, only IND02
+    # IND02: 0.5% commission
     if description and 'IND02' in description.upper() and 'IND01' not in description.upper():
         additional_fee += abs(amount) * 0.005
-        logger.debug(f"IND02 transaction detected: adding 0.5% commission ({abs(amount) * 0.005:.2f}) to fee")
+        logger.debug(f"IND02 commission: {abs(amount) * 0.005:.2f}")
 
-    # Case 2: "Merchant Payment Other Single Step" has 4% cashback
-    # The fee shown is NOT deducted; instead there's a 4% refund added to balance
+    # Merchant Payment Other Single Step: 4% cashback
     if description and 'MERCHANT PAYMENT OTHER SINGLE STEP' in description.upper():
         cashback = abs(amount) * 0.04
-        additional_fee -= cashback  # Negative fee = cashback (added to balance)
-        logger.debug(f"Merchant Payment detected: adding 4% cashback ({cashback:.2f}) to balance")
+        additional_fee -= cashback
+        logger.debug(f"Merchant Payment cashback: {cashback:.2f}")
 
     return additional_fee
 
 
-def is_amount_signed(df: pd.DataFrame, pdf_format: int, provider_code: str) -> bool:
+def calculate_opening_balance_format1_pdf(first_balance: float, first_amount: float,
+                                          first_fee: float, first_direction: str,
+                                          first_description: str = '') -> float:
     """
-    Determine if amounts in the dataframe are signed or unsigned.
+    Calculate opening balance for Format 1 PDF (unsigned amounts).
+
+    Logic: Opening = Balance ± amount ± fee ± implicit_fees (based on direction)
+    - Credit: Opening = Balance - amount - fee + implicit_fees
+    - Debit:  Opening = Balance + amount + fee + implicit_fees
 
     Args:
-        df: DataFrame with transaction data
-        pdf_format: PDF format (1 or 2)
-        provider_code: Provider code (UATL or UMTN)
+        first_balance: Balance shown in first transaction
+        first_amount: Amount (unsigned)
+        first_fee: Fee
+        first_direction: 'credit', 'debit', 'cr', 'dr'
+        first_description: Description for detecting implicit fees
 
     Returns:
-        True if amounts are signed (Format 2, UMTN, or CSV Format 1)
-        False if amounts are unsigned (PDF Format 1)
-    """
-    if pdf_format == 2 or provider_code == 'UMTN':
-        return True
-
-    if pdf_format == 1 and not df.empty:
-        # Check if amounts have negative values (indicates signed amounts from CSV)
-        return (df['amount'] < 0).any()
-
-    return False
-
-
-def calculate_opening_balance(first_balance: float, first_amount: float, first_fee: float,
-                              first_direction: str, is_signed: bool, pdf_format: int,
-                              first_description: str = '') -> float:
-    """
-    Calculate opening balance from first transaction.
-
-    Args:
-        first_balance: Balance from first transaction
-        first_amount: Amount from first transaction
-        first_fee: Fee from first transaction
-        first_direction: Transaction direction ('credit', 'debit', 'cr', 'dr')
-        is_signed: Whether amounts are signed
-        pdf_format: PDF format (1 or 2)
-        first_description: Transaction description (used to detect special fees)
-
-    Returns:
-        Calculated opening balance
+        Opening balance
     """
     direction = str(first_direction).lower()
-
-    # Convert to float to avoid Decimal/float type issues
     first_balance = float(first_balance)
     first_amount = float(first_amount)
     first_fee = float(first_fee)
 
-    # Calculate implicit fees and cashbacks (DRY - single source of truth)
-    additional_fee = calculate_implicit_fees_and_cashbacks(first_amount, first_description)
+    additional_fee = calculate_implicit_fees_format1(first_amount, first_description)
 
-    if is_signed:
-        # Signed amounts
-        if pdf_format == 2:
-            # Format 2: fees already included in signed amount, don't subtract separately
-            return first_balance - first_amount + additional_fee
-        else:
-            # Format 1 CSV: fees separate, subtract both + additional_fee
-            return first_balance - first_amount - first_fee + additional_fee
-    else:
-        # Unsigned amounts (Format 1 PDF): use direction
-        if direction in ['credit', 'cr']:
-            return first_balance - first_amount - first_fee + additional_fee
-        else:  # debit/dr
-            return first_balance + first_amount + first_fee + additional_fee
+    if direction in ['credit', 'cr']:
+        return first_balance - first_amount - first_fee + additional_fee
+    else:  # debit/dr
+        return first_balance + first_amount + first_fee + additional_fee
 
 
-def apply_transaction_to_balance(balance: float, amount: float, fee: float,
-                                 direction: str, is_signed: bool, pdf_format: int = 1,
-                                 description: str = '') -> float:
+def calculate_opening_balance_format1_csv(first_balance: float, first_amount: float,
+                                          first_fee: float, first_description: str = '') -> float:
     """
-    Apply a single transaction to running balance.
+    Calculate opening balance for Format 1 CSV (signed amounts).
+
+    Logic: Opening = Balance - amount - fee + implicit_fees
+    - Amount is already signed (positive=credit, negative=debit)
+    - Fees are separate
+
+    Args:
+        first_balance: Balance shown in first transaction
+        first_amount: Amount (signed)
+        first_fee: Fee
+        first_description: Description for detecting implicit fees
+
+    Returns:
+        Opening balance
+    """
+    first_balance = float(first_balance)
+    first_amount = float(first_amount)
+    first_fee = float(first_fee)
+
+    additional_fee = calculate_implicit_fees_format1(first_amount, first_description)
+
+    return first_balance - first_amount - first_fee + additional_fee
+
+
+def apply_transaction_format1_pdf(balance: float, amount: float, fee: float,
+                                  direction: str, description: str = '') -> float:
+    """
+    Apply transaction to balance for Format 1 PDF (unsigned amounts).
+
+    Logic: New Balance = Balance ± amount - fee - implicit_fees (based on direction)
+    - Credit: Balance = Balance + amount - fee - implicit_fees
+    - Debit:  Balance = Balance - amount - fee - implicit_fees
 
     Args:
         balance: Current balance
-        amount: Transaction amount
-        fee: Transaction fee
-        direction: Transaction direction ('credit', 'debit', 'cr', 'dr')
-        is_signed: Whether amounts are signed
-        pdf_format: PDF format (1 or 2)
-        description: Transaction description (used to detect special fees)
+        amount: Amount (unsigned)
+        fee: Fee
+        direction: 'credit', 'debit', 'cr', 'dr'
+        description: Description for detecting implicit fees
 
     Returns:
-        New balance after applying transaction
+        New balance
     """
     direction = str(direction).lower()
-
-    # Convert to float to avoid Decimal/float type issues
     balance = float(balance)
     amount = float(amount)
     fee = float(fee)
 
-    # Calculate implicit fees and cashbacks (DRY - single source of truth)
-    additional_fee = calculate_implicit_fees_and_cashbacks(amount, description)
+    additional_fee = calculate_implicit_fees_format1(amount, description)
 
-    if is_signed:
-        # Signed amounts
-        if pdf_format == 2:
-            # Format 2: fees already included in signed amount, just add amount
-            return balance + amount - additional_fee
-        else:
-            # Format 1 CSV: fees separate, add amount and subtract fee + additional_fee
-            return balance + amount - fee - additional_fee
-    else:
-        # Unsigned amounts (Format 1 PDF): use direction
-        if direction in ['credit', 'cr']:
-            return balance + amount - fee - additional_fee
-        else:  # debit/dr
-            return balance - amount - fee - additional_fee
+    if direction in ['credit', 'cr']:
+        return balance + amount - fee - additional_fee
+    else:  # debit/dr
+        return balance - amount - fee - additional_fee
+
+
+def apply_transaction_format1_csv(balance: float, amount: float, fee: float,
+                                  description: str = '') -> float:
+    """
+    Apply transaction to balance for Format 1 CSV (signed amounts).
+
+    Logic: New Balance = Balance + amount - fee - implicit_fees
+    - Amount is already signed (positive=credit, negative=debit)
+    - Fees are separate
+
+    Args:
+        balance: Current balance
+        amount: Amount (signed)
+        fee: Fee
+        description: Description for detecting implicit fees
+
+    Returns:
+        New balance
+    """
+    balance = float(balance)
+    amount = float(amount)
+    fee = float(fee)
+
+    additional_fee = calculate_implicit_fees_format1(amount, description)
+
+    return balance + amount - fee - additional_fee
+
+
+# ============================================================================
+# FORMAT 2 LOGIC (PDF/CSV with signed amounts, fees included)
+# ============================================================================
+
+def calculate_opening_balance_format2(first_balance: float, first_amount: float) -> float:
+    """
+    Calculate opening balance for Format 2 (signed amounts, fees included).
+
+    Logic: Opening = Balance - amount
+    - Amount is signed (positive=credit, negative=debit)
+    - Fees are already included in the amount
+    - No implicit fees/cashbacks to calculate
+
+    Args:
+        first_balance: Balance shown in first transaction
+        first_amount: Amount (signed, fees included)
+
+    Returns:
+        Opening balance
+    """
+    first_balance = float(first_balance)
+    first_amount = float(first_amount)
+
+    return first_balance - first_amount
+
+
+def apply_transaction_format2(balance: float, amount: float) -> float:
+    """
+    Apply transaction to balance for Format 2 (signed amounts, fees included).
+
+    Logic: New Balance = Balance + amount
+    - Amount is signed (positive=credit, negative=debit)
+    - Fees are already included in the amount
+    - No implicit fees/cashbacks to calculate
+
+    Args:
+        balance: Current balance
+        amount: Amount (signed, fees included)
+
+    Returns:
+        New balance
+    """
+    balance = float(balance)
+    amount = float(amount)
+
+    return balance + amount
+
+
+# ============================================================================
+# MTN LOGIC (similar to Format 2 but uses float_balance field)
+# ============================================================================
+
+def calculate_opening_balance_mtn(first_balance: float, first_amount: float) -> float:
+    """
+    Calculate opening balance for MTN (same as Format 2).
+
+    Logic: Opening = Balance - amount
+
+    Args:
+        first_balance: Float balance from first transaction
+        first_amount: Amount (signed, fees included)
+
+    Returns:
+        Opening balance
+    """
+    return calculate_opening_balance_format2(first_balance, first_amount)
+
+
+def apply_transaction_mtn(balance: float, amount: float) -> float:
+    """
+    Apply transaction to balance for MTN (same as Format 2).
+
+    Logic: New Balance = Balance + amount
+
+    Args:
+        balance: Current balance
+        amount: Amount (signed, fees included)
+
+    Returns:
+        New balance
+    """
+    return apply_transaction_format2(balance, amount)
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def is_format1_csv(df: pd.DataFrame, pdf_format: int) -> bool:
+    """
+    Determine if this is Format 1 CSV (signed amounts).
+
+    Args:
+        df: DataFrame with transaction data
+        pdf_format: PDF format (1 or 2)
+
+    Returns:
+        True if Format 1 CSV (has negative amounts), False otherwise
+    """
+    if pdf_format == 1 and not df.empty:
+        return (df['amount'] < 0).any()
+    return False
 
 
 def calculate_total_credits_debits(df: pd.DataFrame, pdf_format: int,
@@ -164,14 +280,16 @@ def calculate_total_credits_debits(df: pd.DataFrame, pdf_format: int,
     Returns:
         Tuple of (total_credits, total_debits)
     """
-    is_signed = is_amount_signed(df, pdf_format, provider_code)
-
-    if is_signed:
-        # Signed amounts: positive = credit, negative = debit
+    # Format 2 and MTN have signed amounts
+    if pdf_format == 2 or provider_code == 'UMTN':
         credits = float(df[df['amount'] > 0]['amount'].sum())
         debits = float(abs(df[df['amount'] < 0]['amount'].sum()))
+    # Format 1 CSV has signed amounts
+    elif is_format1_csv(df, pdf_format):
+        credits = float(df[df['amount'] > 0]['amount'].sum())
+        debits = float(abs(df[df['amount'] < 0]['amount'].sum()))
+    # Format 1 PDF has unsigned amounts with direction
     else:
-        # Unsigned amounts: use direction column
         credits = float(df[df['txn_direction'].str.lower().isin(['credit', 'cr'])]['amount'].sum())
         debits = float(df[df['txn_direction'].str.lower().isin(['debit', 'dr'])]['amount'].sum())
 

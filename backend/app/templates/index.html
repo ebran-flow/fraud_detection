@@ -485,6 +485,9 @@
                     <button class="btn btn-success btn-sm" id="process-selected-btn" disabled onclick="processSelected()">
                         ⚙️ Process Selected
                     </button>
+                    <button class="btn btn-warning btn-sm" id="reprocess-selected-btn" disabled onclick="reprocessSelected()">
+                        🔄 Reprocess Selected
+                    </button>
                     <button class="btn btn-danger btn-sm" id="delete-processed-btn" disabled onclick="deleteSelected(false)">
                         🗑️ Delete Processed
                     </button>
@@ -1200,6 +1203,9 @@
             // Enable process button only if IMPORTED statements are selected
             document.getElementById('process-selected-btn').disabled = importedCount === 0;
 
+            // Enable reprocess button only if PROCESSED statements are selected
+            document.getElementById('reprocess-selected-btn').disabled = processedCount === 0;
+
             // Enable download selected button if any statements are selected
             document.getElementById('download-selected-btn').disabled = selectedRunIds.size === 0;
 
@@ -1289,6 +1295,69 @@
                 statusDiv.innerHTML = `
                     <div class="alert alert-error">
                         ❌ Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Reprocess selected statements
+        async function reprocessSelected() {
+            if (selectedRunIds.size === 0) return;
+
+            if (!confirm(`Reprocess ${selectedRunIds.size} statement(s)?\n\nThis will:\n1. Delete existing processed data\n2. Re-run balance calculations\n\nContinue?`)) {
+                return;
+            }
+
+            const statusDiv = document.getElementById('table-status');
+            const runIdsArray = Array.from(selectedRunIds);
+
+            statusDiv.innerHTML = '<div class="spinner"></div><p style="text-align: center;">Deleting processed data...</p>';
+
+            try {
+                // Step 1: Delete processed data
+                const deleteResponse = await fetch('/api/v1/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        run_ids: runIdsArray,
+                        delete_all: false,
+                        confirm: true
+                    })
+                });
+
+                const deleteResult = await deleteResponse.json();
+
+                if (!deleteResponse.ok) {
+                    throw new Error('Failed to delete processed data');
+                }
+
+                statusDiv.innerHTML = '<div class="spinner"></div><p style="text-align: center;">Reprocessing statements...</p>';
+
+                // Step 2: Reprocess
+                const processResponse = await fetch('/api/v1/process', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({run_ids: runIdsArray})
+                });
+
+                const processResult = await processResponse.json();
+
+                let message = `✅ Reprocessing complete<br>
+                               Total: ${processResult.total}<br>
+                               Successful: ${processResult.successful}<br>
+                               Failed: ${processResult.failed}`;
+
+                statusDiv.innerHTML = `<div class="alert alert-success">${message}</div>`;
+
+                // Clear selection and reload
+                selectedRunIds.clear();
+                document.getElementById('select-all').checked = false;
+                await loadStatements();
+
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Error during reprocessing: ${error.message}
                     </div>
                 `;
             }

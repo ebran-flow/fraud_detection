@@ -46,7 +46,7 @@ async def get_filter_options(db: Session = Depends(get_db)) -> Dict[str, Any]:
 @router.get("/list", response_model=ListResponse)
 async def list_statements(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=500),
+    page_size: int = Query(50, ge=1, le=1000000),
     acc_number: Optional[str] = Query(None),
     acc_prvdr_code: Optional[str] = Query(None),
     rm_name: Optional[str] = Query(None),
@@ -108,7 +108,7 @@ async def list_statements(
 @router.get("/unified-list")
 async def list_unified_statements(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=500),
+    page_size: int = Query(20, ge=1, le=1000000),
     search: Optional[str] = Query(None, description="Search by run_id or acc_number"),
     acc_number: Optional[str] = Query(None),
     acc_prvdr_code: Optional[str] = Query(None),
