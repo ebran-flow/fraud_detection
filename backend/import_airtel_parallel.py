@@ -212,7 +212,7 @@ def log_progress(result, counter, total, start_time):
 
 def main():
     parser = argparse.ArgumentParser(description='Parallel import for Airtel (UMTN) statements')
-    parser.add_argument('--workers', type=int, default=8, help='Number of parallel workers (default: 8)')
+    parser.add_argument('--workers', type=int, default=6, help='Number of parallel workers (default: 6, max: 12)')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--month', type=str, help='Filter by specific month (e.g., 2025-09)')
     args = parser.parse_args()
@@ -226,8 +226,8 @@ def main():
         logger.error(f"❌ Extracted directory not found: {EXTRACTED_DIR}")
         return 1
 
-    # Validate workers
-    max_workers = cpu_count() * 4  # Allow up to 4x CPU cores
+    # Validate workers (optimized for direct DB access)
+    max_workers = 12  # Safe limit for direct DB access
     if args.workers > max_workers:
         logger.warning(f"⚠️  Requested {args.workers} workers, limiting to {max_workers}")
         args.workers = max_workers

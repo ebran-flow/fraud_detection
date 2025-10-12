@@ -15,7 +15,25 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    command: --default-authentication-plugin=mysql_native_password --max_allowed_packet=256M --innodb_buffer_pool_size=2G
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --max_allowed_packet=512M
+      --innodb_buffer_pool_size=4G
+      --innodb_log_file_size=512M
+      --max_connections=300
+      --thread_cache_size=100
+      --table_open_cache=4000
+      --query_cache_size=0
+      --tmp_table_size=128M
+      --max_heap_table_size=128M
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 10G
+        reservations:
+          cpus: '4'
+          memory: 4G
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
@@ -40,16 +58,17 @@ services:
       APP_ENV: production
       LOG_LEVEL: INFO
 
-      # Performance tuning for your PC (i5-12400 has 12 threads, Ryzen 6700XT, 32GB RAM)
-      # Use 8 workers for parallel import (leave 4 threads for system)
-      PARALLEL_IMPORT_WORKERS: 8
+      # Performance tuning for 32GB RAM system
+      # i5-12400: 6 cores / 12 threads
+      # process_parallel.py uses DB directly, doesn't need multiple uvicorn workers
+      PARALLEL_IMPORT_WORKERS: 6
 
       # Database connection pool
       DB_POOL_SIZE: 20
       DB_MAX_OVERFLOW: 10
 
-      # Uvicorn workers (FastAPI)
-      UVICORN_WORKERS: 4
+      # Uvicorn workers (FastAPI) - only 1 needed since parallel script bypasses API
+      UVICORN_WORKERS: 1
     ports:
       - "8501:8501"
     volumes:
@@ -59,12 +78,20 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 12G
+        reservations:
+          cpus: '2'
+          memory: 4G
     command: >
       sh -c "
         echo 'Waiting for MySQL to be fully ready...' &&
         sleep 10 &&
         echo 'Starting FastAPI application...' &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8501 --workers 4 --log-level info
+        uvicorn app.main:app --host 0.0.0.0 --port 8501 --workers 1 --log-level info
       "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
