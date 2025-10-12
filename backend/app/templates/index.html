@@ -857,7 +857,8 @@
                             <td>
                                 <div class="action-cell">
                                     ${item.status === 'VERIFIED' || item.status === 'VERIFIED_WITH_WARNINGS' || item.status === 'VERIFICATION_FAILED' || item.status === 'FLAGGED' ?
-                                        `<button class="btn btn-sm btn-primary" onclick="downloadProcessed('${item.run_id}', '${item.acc_number || 'unknown'}')">📥 Download</button>` :
+                                        `<button class="btn btn-sm btn-primary" onclick="downloadProcessed('${item.run_id}', '${item.acc_number || 'unknown'}')">📥 Download</button>
+                                         <button class="btn btn-sm btn-success" onclick="exportProcessedToGoogleSheets('${item.run_id}', '${item.acc_number || 'unknown'}')">📊 Google Sheets</button>` :
                                         item.status === 'IMPORTED' ?
                                         `<button class="btn btn-sm btn-success" onclick="processSingle('${item.run_id}')">⚙️ Process</button>` :
                                         '-'
@@ -1308,6 +1309,34 @@
                 document.body.removeChild(a);
             } catch (error) {
                 alert('Error downloading selected summary: ' + error.message);
+            }
+        }
+
+        // Export processed statements to Google Sheets for specific run_id
+        async function exportProcessedToGoogleSheets(runId, accNumber) {
+            // Show loading message
+            const loadingMsg = `Creating Google Sheet for ${accNumber}_${runId}...\n\nThis may take a few seconds.`;
+            console.log(loadingMsg);
+
+            try {
+                const response = await fetch(`/api/v1/export/google-sheets?data_type=processed&run_id=${encodeURIComponent(runId)}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Export failed');
+                }
+
+                const result = await response.json();
+
+                if (result.success && result.url) {
+                    // Open Google Sheet in new tab
+                    window.open(result.url, '_blank');
+                    alert(`✅ Google Sheet created successfully!\n\nSheet: ${result.title}\n\nOpening in new tab...`);
+                } else {
+                    throw new Error('No URL returned');
+                }
+            } catch (error) {
+                alert('❌ Error exporting to Google Sheets:\n' + error.message);
             }
         }
 

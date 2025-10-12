@@ -68,3 +68,5 @@ uploaded_pdfs
 docs/data/UATL/*
 backups
 *.env
+oauth_credentials.json
+token.pickle
