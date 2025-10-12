@@ -326,11 +326,31 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     for idx in range(len(df)):
         row = df.iloc[idx]
 
-        # For special transactions (Commission Disbursement, Deallocation, Reversal, Rollback),
+        # Handle Commission Disbursement specially (moves money between Regular Biz and Commission wallets)
+        if row.get('is_special_txn', False) and row.get('special_txn_type') == 'Commission Disbursement':
+            # For Commission Disbursement: invert the amount (debit = add, credit = subtract)
+            # This maintains the running balance for the Regular Biz wallet
+            inverted_amount = -float(row['amount'])  # Invert: if debited, add; if credited, subtract
+            running_balance = running_balance + inverted_amount
+            logger.debug(f"Commission Disbursement: inverted amount {row['amount']} → {inverted_amount}, running balance = {running_balance}")
+
+            # The balance shown is for Commission wallet, so copy balance_diff from previous row
+            balance_diff = prev_diff if prev_diff is not None else 0.0
+            df.at[df.index[idx], 'calculated_running_balance'] = running_balance
+            df.at[df.index[idx], 'balance_diff'] = balance_diff
+
+        # For other special transactions (Deallocation, Reversal, Rollback),
         # skip balance calculation and keep the previous running balance
-        if row.get('is_special_txn', False):
+        elif row.get('is_special_txn', False):
             # Don't update running_balance - it stays the same
             logger.debug(f"Skipping balance calculation for special transaction: {row.get('special_txn_type')}")
+            df.at[df.index[idx], 'calculated_running_balance'] = running_balance
+
+            # Calculate difference from statement balance
+            stmt_balance = float(row[balance_field])
+            balance_diff = running_balance - stmt_balance
+            df.at[df.index[idx], 'balance_diff'] = balance_diff
+
         else:
             # Apply transaction to running balance for normal transactions
             running_balance = apply_transaction_to_balance(
@@ -343,12 +363,12 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
                 str(row.get('description', ''))
             )
 
-        df.at[df.index[idx], 'calculated_running_balance'] = running_balance
+            df.at[df.index[idx], 'calculated_running_balance'] = running_balance
 
-        # Calculate difference from statement balance
-        stmt_balance = float(row[balance_field])
-        balance_diff = running_balance - stmt_balance
-        df.at[df.index[idx], 'balance_diff'] = balance_diff
+            # Calculate difference from statement balance
+            stmt_balance = float(row[balance_field])
+            balance_diff = running_balance - stmt_balance
+            df.at[df.index[idx], 'balance_diff'] = balance_diff
 
         # Track balance difference changes
         if prev_diff is not None and abs(balance_diff - prev_diff) > 0.01:
