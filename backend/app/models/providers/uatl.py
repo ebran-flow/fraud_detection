@@ -32,7 +32,7 @@ class UATLRawStatement(Base):
         Index('idx_uatl_acc_number', 'acc_number'),
         Index('idx_uatl_run_id', 'run_id'),
         Index('idx_uatl_txn_date', 'txn_date'),
-        Index('uq_uatl_run_txn', 'run_id', 'txn_id', unique=True),
+        Index('idx_uatl_txn_id', 'txn_id'),
     )
 
     def to_dict(self):

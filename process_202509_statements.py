@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Process September 2025 UATL Statements
+Process All UATL Statements (Newest to Oldest)
 
-Filters statements from mapper.csv submitted in 202509, finds them in extracted
-directory, and processes them through the backend workflow.
+Filters all UATL statements from mapper.csv, sorts by date (newest first),
+finds them in extracted directory, and processes them through the backend workflow.
 
 Usage:
-    python process_202509_statements.py              # Upload and process
+    python process_202509_statements.py              # Upload and process all
     python process_202509_statements.py --dry-run    # Preview
     python process_202509_statements.py --upload-only # Only upload
+    python process_202509_statements.py --month 2025-09 # Only specific month
 """
 
 import sys
@@ -43,23 +44,39 @@ logger = logging.getLogger(__name__)
 MAPPER_CSV = Path("/home/ebran/Developer/projects/airtel_fraud_detection/docs/data/statements/mapper.csv")
 EXTRACTED_DIR = Path("/home/ebran/Developer/projects/airtel_fraud_detection/docs/data/UATL/extracted")
 PROVIDER_CODE = "UATL"
-TARGET_MONTH = "2025-09"
 
 
-def read_202509_statements(mapper_csv: Path):
-    """Read mapper.csv and filter UATL statements from September 2025"""
+def read_uatl_statements(mapper_csv: Path, target_month: str = None):
+    """
+    Read mapper.csv and filter UATL statements
+    Sorts by date (newest first)
+
+    Args:
+        mapper_csv: Path to mapper.csv
+        target_month: Optional filter for specific month (e.g., "2025-09")
+    """
     statements = []
 
     with open(mapper_csv, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if row['acc_prvdr_code'] == 'UATL' and row['created_date'].startswith(TARGET_MONTH):
-                statements.append({
-                    'run_id': row['run_id'],
-                    'acc_number': row['acc_number'],
-                    'rm_name': row['rm_name'],
-                    'created_date': row['created_date']
-                })
+            # Filter for UATL
+            if row['acc_prvdr_code'] != 'UATL':
+                continue
+
+            # Optional month filter
+            if target_month and not row['created_date'].startswith(target_month):
+                continue
+
+            statements.append({
+                'run_id': row['run_id'],
+                'acc_number': row['acc_number'],
+                'rm_name': row['rm_name'],
+                'created_date': row['created_date']
+            })
+
+    # Sort by date (newest first)
+    statements.sort(key=lambda x: x['created_date'], reverse=True)
 
     return statements
 
@@ -102,9 +119,10 @@ def upload_statement(db, file_path: Path, run_id: str, provider_code: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process September 2025 UATL statements')
+    parser = argparse.ArgumentParser(description='Process all UATL statements (latest to oldest)')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--upload-only', action='store_true', help='Upload only, no processing')
+    parser.add_argument('--month', type=str, help='Filter by specific month (e.g., 2025-09)')
     args = parser.parse_args()
 
     # Validate paths
@@ -119,13 +137,22 @@ def main():
     # Start
     start_time = datetime.now()
     logger.info(f"\n{'='*70}")
-    logger.info(f"PROCESS SEPTEMBER 2025 - {'DRY RUN' if args.dry_run else 'LIVE'}")
+    if args.month:
+        logger.info(f"PROCESS {args.month} UATL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
+    else:
+        logger.info(f"PROCESS ALL UATL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
     logger.info(f"{'='*70}\n")
 
     # Read mapper
     logger.info("Reading mapper.csv...")
-    statements = read_202509_statements(MAPPER_CSV)
-    logger.info(f"Found {len(statements)} statements from September 2025\n")
+    statements = read_uatl_statements(MAPPER_CSV, target_month=args.month)
+
+    if args.month:
+        logger.info(f"Found {len(statements)} statements from {args.month} (sorted newest first)\n")
+    else:
+        logger.info(f"Found {len(statements)} UATL statements (sorted newest first)\n")
+        if len(statements) > 0:
+            logger.info(f"Date range: {statements[0]['created_date']} to {statements[-1]['created_date']}\n")
 
     if not statements:
         logger.warning("No statements found")
