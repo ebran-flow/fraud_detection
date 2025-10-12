@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .config import APP_TITLE, APP_VERSION, API_PREFIX
 from .services.db import init_db
-from .api.v1 import upload, process, download, delete, statements, status, ui
+from .api.v1 import upload, process, download, delete, statements, status, ui, parallel_import
 
 # Configure logging
 logging.basicConfig(
@@ -55,6 +55,7 @@ app.include_router(delete.router, prefix=API_PREFIX, tags=["Delete"])
 app.include_router(statements.router, prefix=API_PREFIX, tags=["Statements"])
 app.include_router(status.router, prefix=API_PREFIX, tags=["Status"])
 app.include_router(ui.router, prefix=API_PREFIX, tags=["UI"])
+app.include_router(parallel_import.router, prefix=API_PREFIX, tags=["Parallel Import"])
 
 
 @app.on_event("startup")
@@ -75,8 +76,14 @@ async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.get("/api/health")
+@app.get("/health")
 async def health():
+    """Health check endpoint for Docker"""
+    return {"status": "healthy", "app": APP_TITLE, "version": APP_VERSION}
+
+
+@app.get("/api/health")
+async def api_health():
     """Health check endpoint"""
     return {"status": "healthy", "app": APP_TITLE, "version": APP_VERSION}
 
