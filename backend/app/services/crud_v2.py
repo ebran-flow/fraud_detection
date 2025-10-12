@@ -22,6 +22,27 @@ def check_run_id_exists(db: Session, run_id: str, provider_code: str) -> bool:
     return db.query(RawModel).filter(RawModel.run_id == run_id).first() is not None
 
 
+def get_all_run_ids(db: Session, provider_code: str) -> List[str]:
+    """
+    Get all run_ids for given provider (for parallel processing optimization)
+    Checks both raw_statements AND metadata to catch failed imports
+    """
+    run_ids = set()
+
+    # Get from raw_statements (successful imports)
+    RawModel = ProviderFactory.get_raw_model(provider_code)
+    raw_result = db.query(RawModel.run_id).distinct().all()
+    run_ids.update([row[0] for row in raw_result])
+
+    # Get from metadata (includes failed imports)
+    metadata_result = db.query(Metadata.run_id).filter(
+        Metadata.acc_prvdr_code == provider_code
+    ).distinct().all()
+    run_ids.update([row[0] for row in metadata_result])
+
+    return list(run_ids)
+
+
 def get_raw_statements_by_run_id(db: Session, run_id: str, provider_code: str):
     """Get raw statements for provider"""
     RawModel = ProviderFactory.get_raw_model(provider_code)

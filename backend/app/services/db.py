@@ -17,6 +17,8 @@ engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,  # Verify connections before using
     pool_recycle=3600,   # Recycle connections after 1 hour
+    pool_size=20,        # Maximum number of connections in pool
+    max_overflow=10,     # Additional connections beyond pool_size
     echo=False,          # Set to True for SQL query logging
 )
 
