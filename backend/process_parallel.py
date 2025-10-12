@@ -22,17 +22,17 @@ from functools import partial
 import os
 from dotenv import load_dotenv
 
-# Load backend .env file
-load_dotenv(Path(__file__).parent / 'backend' / '.env')
+# Load .env file
+load_dotenv(Path(__file__).parent / '.env')
 
-# Add parent directory to path
+# Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from backend.app.services.db import SessionLocal
-from backend.app.services import crud_v2 as crud
-from backend.app.services.parsers import get_parser
-from backend.app.services.mapper import enrich_metadata_with_mapper
-from backend.app.models.metadata import Metadata
+from app.services.db import SessionLocal
+from app.services import crud_v2 as crud
+from app.services.parsers import get_parser
+from app.services.mapper import enrich_metadata_with_mapper
+from app.models.metadata import Metadata
 
 # Setup logging
 logging.basicConfig(
@@ -45,9 +45,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Paths (relative to script location)
-SCRIPT_DIR = Path(__file__).parent
-BACKEND_DIR = SCRIPT_DIR / "backend"
+# Paths (relative to backend folder)
+BACKEND_DIR = Path(__file__).parent
 MAPPER_CSV = BACKEND_DIR / "docs" / "data" / "statements" / "mapper.csv"
 EXTRACTED_DIR = BACKEND_DIR / "docs" / "data" / "UATL" / "extracted"
 PROVIDER_CODE = "UATL"
