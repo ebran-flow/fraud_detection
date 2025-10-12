@@ -84,6 +84,148 @@ def extract_account_number(page, pdf_format: int = 1) -> Optional[str]:
     return None
 
 
+def extract_requestor_email(page, pdf_format: int = 1) -> Optional[str]:
+    """
+    Extract requestor email address from PDF page (Airtel format 1 only).
+    The email is typically under 'Email Address:' section, after Customer Name and Mobile Number.
+    """
+    if pdf_format != 1:
+        # Only format 1 has requestor email
+        return None
+
+    extracted_text = page.extract_text()
+
+    # Pattern to extract email address (case-insensitive)
+    # Look for "Email Address:" followed by the email
+    email_pattern = re.compile(r'Email\s+Address\s*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', re.I)
+    match = email_pattern.search(extracted_text)
+
+    if match:
+        return match.group(1)
+
+    # Alternative: search for any email pattern in the header section
+    # (in case the label format is different)
+    general_email_pattern = re.compile(r'\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b')
+    matches = general_email_pattern.findall(extracted_text)
+
+    if matches:
+        # Return the first email found (typically the requestor)
+        return matches[0]
+
+    logger.debug("Requestor email not found in statement")
+    return None
+
+
+def extract_customer_name(page, pdf_format: int = 1) -> Optional[str]:
+    """
+    Extract customer name from PDF page (Airtel format 1 only).
+    """
+    if pdf_format != 1:
+        return None
+
+    extracted_text = page.extract_text()
+
+    # Pattern: "Customer Name:" followed by the name
+    pattern = re.compile(r'Customer\s+Name\s*:\s*(.+?)(?:\n|Mobile Number)', re.I | re.S)
+    match = pattern.search(extracted_text)
+
+    if match:
+        name = match.group(1).strip()
+        # Clean up any extra whitespace
+        name = re.sub(r'\s+', ' ', name)
+        return name
+
+    logger.debug("Customer name not found in statement")
+    return None
+
+
+def extract_mobile_number(page, pdf_format: int = 1) -> Optional[str]:
+    """
+    Extract mobile number from PDF page (Airtel format 1 only).
+    This extracts from the header section, not the account number field.
+    """
+    if pdf_format != 1:
+        return None
+
+    extracted_text = page.extract_text()
+
+    # Pattern: "Mobile Number:" followed by the number
+    pattern = re.compile(r'Mobile\s+Number\s*:\s*(\d+)', re.I)
+    match = pattern.search(extracted_text)
+
+    if match:
+        return match.group(1).strip()
+
+    logger.debug("Mobile number not found in statement header")
+    return None
+
+
+def extract_statement_period(page, pdf_format: int = 1) -> Optional[str]:
+    """
+    Extract statement period from PDF page (Airtel format 1 only).
+    Example: "01-Sep-2025 to 30-Sep-2025"
+    """
+    if pdf_format != 1:
+        return None
+
+    extracted_text = page.extract_text()
+
+    # Pattern: "Statement Period:" followed by the date range
+    pattern = re.compile(r'Statement\s+Period\s*:\s*(.+?)(?:\n|Request Date)', re.I | re.S)
+    match = pattern.search(extracted_text)
+
+    if match:
+        period = match.group(1).strip()
+        # Clean up any extra whitespace or newlines
+        period = re.sub(r'\s+', ' ', period)
+        return period
+
+    logger.debug("Statement period not found in statement")
+    return None
+
+
+def extract_request_date(page, pdf_format: int = 1) -> Optional[datetime]:
+    """
+    Extract request date from PDF page (Airtel format 1 only).
+    Returns datetime object.
+    """
+    if pdf_format != 1:
+        return None
+
+    extracted_text = page.extract_text()
+
+    # Pattern: "Request Date:" followed by the date
+    pattern = re.compile(r'Request\s+Date\s*:\s*(.+?)(?:\n|$)', re.I)
+    match = pattern.search(extracted_text)
+
+    if match:
+        date_str = match.group(1).strip()
+        # Clean up
+        date_str = re.sub(r'\s+', ' ', date_str)
+
+        # Try to parse the date - common formats for request date
+        date_formats = [
+            '%d-%b-%Y',      # 01-Sep-2025
+            '%d-%m-%Y',      # 01-09-2025
+            '%Y-%m-%d',      # 2025-09-01
+            '%d/%m/%Y',      # 01/09/2025
+            '%d %B %Y',      # 01 September 2025
+            '%d %b %Y',      # 01 Sep 2025
+        ]
+
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+
+        logger.warning(f"Could not parse request date: {date_str}")
+        return None
+
+    logger.debug("Request date not found in statement")
+    return None
+
+
 def is_valid_date(value: Any) -> bool:
     """Check if a value is a valid date."""
     if not value:

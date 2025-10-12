@@ -155,8 +155,18 @@ async def upload_files(
             # Parse file using provider-specific parser
             raw_statements, metadata = parser(file_path, run_id)
 
-            # Enrich metadata with mapper data (rm_name, acc_prvdr_code override)
+            # Enrich metadata with mapper data (rm_name, acc_prvdr_code override, submitted_date)
             metadata = enrich_metadata_with_mapper(metadata, run_id)
+
+            # Add MIME type based on file extension
+            file_ext = os.path.splitext(file.filename)[1].lower()
+            mime_types = {
+                '.pdf': 'application/pdf',
+                '.csv': 'text/csv',
+                '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                '.xls': 'application/vnd.ms-excel'
+            }
+            metadata['mime'] = mime_types.get(file_ext, 'application/octet-stream')
 
             # Provider code should already be in metadata from parser, but ensure consistency
             provider_code = metadata.get('acc_prvdr_code', provider_code)

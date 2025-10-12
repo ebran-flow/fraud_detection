@@ -277,6 +277,61 @@
             display: inline-block;
         }
 
+        /* Consolidated Status Colors */
+        .status-import-failed {
+            background: rgba(128, 128, 128, 0.2);
+            color: #999;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-imported {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-verified {
+            background: rgba(0, 208, 132, 0.2);
+            color: #00d084;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-verified-with-warnings {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-verification-failed {
+            background: rgba(156, 39, 176, 0.2);
+            color: #9c27b0;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-flagged {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
         /* Checkbox styling */
         input[type="checkbox"] {
             width: 18px;
@@ -436,6 +491,80 @@
                 </div>
             </div>
 
+            <!-- Search and Filter Controls -->
+            <div style="background: rgba(74, 158, 255, 0.1); padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Search:</label>
+                        <input type="text" id="search-input" placeholder="Search by Run ID or Account Number"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Status:</label>
+                        <select id="status-filter"
+                                style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                            <option value="">All</option>
+                            <option value="IMPORT_FAILED">Import Failed</option>
+                            <option value="IMPORTED">Imported</option>
+                            <option value="VERIFIED">Verified</option>
+                            <option value="VERIFIED_WITH_WARNINGS">Verified with Warnings</option>
+                            <option value="VERIFICATION_FAILED">Verification Failed</option>
+                            <option value="FLAGGED">Flagged</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">Provider:</label>
+                        <select id="provider-filter"
+                                style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                            <option value="">All</option>
+                            <option value="UATL">Airtel</option>
+                            <option value="UMTN">MTN</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">RM Name:</label>
+                        <input type="text" id="rm-name-input" placeholder="RM Name"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">From Date:</label>
+                        <input type="date" id="from-date"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #4a9eff; font-weight: 600;">To Date:</label>
+                        <input type="date" id="to-date"
+                               style="width: 100%; padding: 0.6rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                    </div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: end;">
+                    <div>
+                        <button class="btn btn-primary" onclick="applyFilters()" style="width: 100%;">
+                            🔍 Search
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm" onclick="clearFilters()" style="width: 100%; background: #888; color: white;">
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <label style="color: #4a9eff; font-weight: 600;">Page Size:</label>
+                    <select id="page-size-select" onchange="changePageSize()"
+                            style="padding: 0.5rem; border-radius: 6px; background: rgba(30, 30, 46, 0.8); color: #e0e0e0; border: 1px solid #4a9eff;">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
             <div id="table-status"></div>
 
             <div class="table-container">
@@ -454,6 +583,7 @@
                             <th>Balance Match</th>
                             <th>Verification</th>
                             <th>Verification Reason</th>
+                            <th>Import Error</th>
                             <th>Duplicates</th>
                             <th>Balance Diff Changes</th>
                             <th>Balance Diff Ratio</th>
@@ -468,7 +598,7 @@
                     </thead>
                     <tbody id="statements-tbody">
                         <tr>
-                            <td colspan="22" style="text-align: center; padding: 2rem; color: #888;">
+                            <td colspan="23" style="text-align: center; padding: 2rem; color: #888;">
                                 Loading statements...
                             </td>
                         </tr>
@@ -638,10 +768,35 @@
             }
         }
 
+        // State variables for pagination and filtering
+        let currentPage = 1;
+        let currentPageSize = 20;
+        let currentSearch = '';
+        let currentStatus = '';  // Consolidated status
+        let currentProvider = '';
+        let currentRmName = '';
+        let currentFromDate = '';
+        let currentToDate = '';
+
         // Load statements table
-        async function loadStatements() {
+        async function loadStatements(page = 1) {
             try {
-                const response = await fetch('/api/v1/unified-list?page_size=100');
+                currentPage = page;
+
+                // Build query parameters
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    page_size: currentPageSize
+                });
+
+                if (currentSearch) params.append('search', currentSearch);
+                if (currentStatus) params.append('status', currentStatus);
+                if (currentProvider) params.append('acc_prvdr_code', currentProvider);
+                if (currentRmName) params.append('rm_name', currentRmName);
+                if (currentFromDate) params.append('from_date', currentFromDate);
+                if (currentToDate) params.append('to_date', currentToDate);
+
+                const response = await fetch(`/api/v1/unified-list?${params.toString()}`);
                 const data = await response.json();
 
                 const tbody = document.getElementById('statements-tbody');
@@ -649,44 +804,49 @@
                 if (data.items.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="22" style="text-align: center; padding: 2rem; color: #888;">
-                                No statements found. Upload files above to get started.
+                            <td colspan="23" style="text-align: center; padding: 2rem; color: #888;">
+                                No statements found. Try adjusting your filters or upload files above.
                             </td>
                         </tr>
                     `;
+                    updatePagination(data.pagination);
                     return;
                 }
 
                 let html = '';
                 data.items.forEach(item => {
-                    const statusClass = item.processing_status === 'IMPORTED' ? 'status-imported' : 'status-processed';
+                    // Get consolidated status CSS class
+                    const statusClass = getStatusClass(item.status);
+                    const statusLabel = getStatusLabel(item.status);
                     const balanceMatchBadge = getBalanceMatchBadge(item);
                     const verificationBadge = getVerificationBadge(item);
                     const verificationReason = getVerificationReason(item);
                     const providerName = item.acc_prvdr_code === 'UATL' ? 'Airtel' : 'MTN';
-                    const canProcess = item.processing_status === 'IMPORTED';
 
                     html += `
                         <tr>
-                            <td><input type="checkbox" class="row-checkbox" data-run-id="${item.run_id}" data-status="${item.processing_status}" data-acc-number="${item.acc_number || 'unknown'}"></td>
+                            <td><input type="checkbox" class="row-checkbox" data-run-id="${item.run_id}" data-status="${item.status}" data-acc-number="${item.acc_number || 'unknown'}"></td>
                             <td><span class="selectable">${item.run_id}</span></td>
                             <td>${providerName}</td>
                             <td>${item.acc_number || 'N/A'}</td>
                             <td>${item.rm_name || 'N/A'}</td>
                             <td>${item.num_rows || 0}</td>
                             <td>${formatDate(item.imported_at)}</td>
-                            <td><span class="${statusClass}">${item.processing_status}</span></td>
+                            <td><span class="${statusClass}">${statusLabel}</span></td>
                             <td>
                                 <div class="action-cell">
-                                    ${item.processing_status === 'PROCESSED' ?
+                                    ${item.status === 'VERIFIED' || item.status === 'VERIFIED_WITH_WARNINGS' || item.status === 'VERIFICATION_FAILED' || item.status === 'FLAGGED' ?
                                         `<button class="btn btn-sm btn-primary" onclick="downloadProcessed('${item.run_id}', '${item.acc_number || 'unknown'}')">📥 Download</button>` :
-                                        `<button class="btn btn-sm btn-success" onclick="processSingle('${item.run_id}')">⚙️ Process</button>`
+                                        item.status === 'IMPORTED' ?
+                                        `<button class="btn btn-sm btn-success" onclick="processSingle('${item.run_id}')">⚙️ Process</button>` :
+                                        '-'
                                     }
                                 </div>
                             </td>
                             <td>${balanceMatchBadge}</td>
                             <td>${verificationBadge}</td>
                             <td>${verificationReason}</td>
+                            <td>${item.parsing_error || '-'}</td>
                             <td>${item.duplicate_count !== null && item.duplicate_count !== undefined ? item.duplicate_count : '-'}</td>
                             <td>${item.balance_diff_changes !== null && item.balance_diff_changes !== undefined ? item.balance_diff_changes : '-'}</td>
                             <td>${item.balance_diff_change_ratio !== null && item.balance_diff_change_ratio !== undefined ? item.balance_diff_change_ratio.toFixed(4) : '-'}</td>
@@ -703,6 +863,9 @@
 
                 tbody.innerHTML = html;
 
+                // Update pagination controls
+                updatePagination(data.pagination);
+
                 // Add checkbox listeners
                 document.querySelectorAll('.row-checkbox').forEach(cb => {
                     cb.addEventListener('change', updateSelectedCount);
@@ -712,13 +875,112 @@
                 console.error('Error loading statements:', error);
                 document.getElementById('statements-tbody').innerHTML = `
                     <tr>
-                        <td colspan="22" style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                        <td colspan="23" style="text-align: center; padding: 2rem; color: #ff6b6b;">
                             Error loading statements: ${error.message}
                         </td>
                     </tr>
                 `;
             }
         }
+
+        function formatDateOnly(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString();
+            } catch {
+                return 'N/A';
+            }
+        }
+
+        function updatePagination(pagination) {
+            const tbody = document.getElementById('statements-tbody');
+            const paginationDiv = document.getElementById('pagination-controls') || createPaginationDiv();
+
+            if (!pagination || pagination.total === 0) {
+                paginationDiv.innerHTML = '';
+                return;
+            }
+
+            const { page, page_size, total, total_pages } = pagination;
+
+            let html = '<div style="padding: 1rem; text-align: center; background: rgba(30, 30, 46, 0.5); border-radius: 8px; margin-top: 1rem;">';
+            html += `<p style="color: #b0b0b0; margin-bottom: 1rem;">Page ${page} of ${total_pages} (Total: ${total} statements)</p>`;
+            html += '<div style="display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">';
+
+            // Previous button
+            if (page > 1) {
+                html += `<button class="btn btn-sm btn-primary" onclick="loadStatements(${page - 1})">← Previous</button>`;
+            }
+
+            // Page numbers (show first, last, and pages around current)
+            for (let i = 1; i <= total_pages; i++) {
+                if (i === 1 || i === total_pages || (i >= page - 2 && i <= page + 2)) {
+                    const activeClass = i === page ? 'style="background: #6bb3ff;"' : '';
+                    html += `<button class="btn btn-sm btn-primary" ${activeClass} onclick="loadStatements(${i})">${i}</button>`;
+                } else if (i === page - 3 || i === page + 3) {
+                    html += '<span style="color: #888; padding: 0 0.5rem;">...</span>';
+                }
+            }
+
+            // Next button
+            if (page < total_pages) {
+                html += `<button class="btn btn-sm btn-primary" onclick="loadStatements(${page + 1})">Next →</button>`;
+            }
+
+            html += '</div></div>';
+            paginationDiv.innerHTML = html;
+        }
+
+        function createPaginationDiv() {
+            const div = document.createElement('div');
+            div.id = 'pagination-controls';
+            document.querySelector('.table-container').appendChild(div);
+            return div;
+        }
+
+        function applyFilters() {
+            currentSearch = document.getElementById('search-input').value.trim();
+            currentStatus = document.getElementById('status-filter').value;
+            currentProvider = document.getElementById('provider-filter').value;
+            currentRmName = document.getElementById('rm-name-input').value.trim();
+            currentFromDate = document.getElementById('from-date').value;
+            currentToDate = document.getElementById('to-date').value;
+            currentPage = 1; // Reset to first page when filtering
+            loadStatements(1);
+        }
+
+        function clearFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('provider-filter').value = '';
+            document.getElementById('rm-name-input').value = '';
+            document.getElementById('from-date').value = '';
+            document.getElementById('to-date').value = '';
+            currentSearch = '';
+            currentStatus = '';
+            currentProvider = '';
+            currentRmName = '';
+            currentFromDate = '';
+            currentToDate = '';
+            currentPage = 1;
+            loadStatements(1);
+        }
+
+        function changePageSize() {
+            currentPageSize = parseInt(document.getElementById('page-size-select').value);
+            currentPage = 1; // Reset to first page when changing page size
+            loadStatements(1);
+        }
+
+        // Allow Enter key to trigger search
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('search-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    applyFilters();
+                }
+            });
+        });
 
         function getBalanceMatchBadge(item) {
             if (item.processing_status === 'IMPORTED') {
@@ -767,6 +1029,30 @@
             if (!dateStr) return 'N/A';
             const date = new Date(dateStr);
             return date.toLocaleString();
+        }
+
+        function getStatusClass(status) {
+            const classMap = {
+                'IMPORT_FAILED': 'status-import-failed',
+                'IMPORTED': 'status-imported',
+                'VERIFIED': 'status-verified',
+                'VERIFIED_WITH_WARNINGS': 'status-verified-with-warnings',
+                'VERIFICATION_FAILED': 'status-verification-failed',
+                'FLAGGED': 'status-flagged'
+            };
+            return classMap[status] || 'status-imported';
+        }
+
+        function getStatusLabel(status) {
+            const labelMap = {
+                'IMPORT_FAILED': 'Import Failed',
+                'IMPORTED': 'Imported',
+                'VERIFIED': 'Verified',
+                'VERIFIED_WITH_WARNINGS': 'Verified with Warnings',
+                'VERIFICATION_FAILED': 'Verification Failed',
+                'FLAGGED': 'Flagged'
+            };
+            return labelMap[status] || status;
         }
 
         function formatNumber(num) {

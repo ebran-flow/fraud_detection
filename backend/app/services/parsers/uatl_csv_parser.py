@@ -1,31 +1,44 @@
 """
 UATL CSV Parser
 Parses Airtel Money CSV statements (both Format 1 and Format 2)
+Supports gzip-compressed CSV files
 """
 import logging
 import pandas as pd
 from typing import Dict, List, Any, Tuple
 from datetime import datetime
 import re
+import gzip
 
 logger = logging.getLogger(__name__)
 
 
 def parse_uatl_csv(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Parse Airtel Money CSV statement
+    Parse Airtel Money CSV statement (supports gzip compression)
 
     Args:
-        file_path: Path to CSV file
+        file_path: Path to CSV file (can be plain or gzip compressed)
         run_id: Unique identifier for this upload
 
     Returns:
         Tuple of (transactions_list, metadata_dict)
     """
     try:
+        # Try to detect if file is gzip compressed
+        with open(file_path, 'rb') as f:
+            magic_bytes = f.read(2)
+
+        is_gzipped = magic_bytes == b'\x1f\x8b'  # gzip magic bytes
+
         # Read the entire CSV to detect format
-        with open(file_path, 'r', encoding='utf-8-sig') as f:
-            content = f.read()
+        if is_gzipped:
+            logger.info(f"Detected gzip-compressed CSV file: {file_path}")
+            with gzip.open(file_path, 'rt', encoding='utf-8-sig') as f:
+                content = f.read()
+        else:
+            with open(file_path, 'r', encoding='utf-8-sig') as f:
+                content = f.read()
 
         # Extract basic info
         metadata = extract_metadata_from_csv(content)
@@ -51,7 +64,10 @@ def parse_uatl_csv(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], D
             return [], metadata
 
         # Read transaction data starting from header
-        df = pd.read_csv(file_path, skiprows=header_line_idx, encoding='utf-8-sig')
+        if is_gzipped:
+            df = pd.read_csv(file_path, skiprows=header_line_idx, encoding='utf-8-sig', compression='gzip')
+        else:
+            df = pd.read_csv(file_path, skiprows=header_line_idx, encoding='utf-8-sig')
 
         # Clean column names
         df.columns = df.columns.str.strip()
@@ -74,7 +90,7 @@ def parse_uatl_csv(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], D
         metadata.update({
             'run_id': run_id,
             'acc_prvdr_code': 'UATL',
-            'pdf_format': pdf_format,
+            'format': f'format_{pdf_format}',  # e.g., 'format_1' or 'format_2'
             'num_rows': len(transactions),
             'parsing_status': 'SUCCESS',
             'parsing_error': None

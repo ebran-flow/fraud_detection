@@ -55,6 +55,15 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
         # Convert to DataFrame for processing
         df = pd.DataFrame([stmt.__dict__ for stmt in raw_statements])
 
+        # Update metadata with start_date and end_date from transaction dates
+        if len(df) > 0 and 'txn_date' in df.columns:
+            # Filter out None/NaT values
+            valid_dates = df['txn_date'].dropna()
+            if len(valid_dates) > 0:
+                metadata.start_date = valid_dates.min().date() if hasattr(valid_dates.min(), 'date') else valid_dates.min()
+                metadata.end_date = valid_dates.max().date() if hasattr(valid_dates.max(), 'date') else valid_dates.max()
+                logger.info(f"Updated metadata dates for {run_id}: start={metadata.start_date}, end={metadata.end_date}")
+
         # Get balance field for provider
         balance_field = ProviderFactory.get_balance_field(provider_code)
 

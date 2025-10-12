@@ -129,6 +129,15 @@ def enrich_metadata_with_mapper(metadata: Dict[str, Any], run_id: str) -> Dict[s
         # Account number should match, but use parser's value if mapper is missing
         if mapping.get('acc_number'):
             metadata['acc_number'] = mapping['acc_number']
+        # Add submitted_date from created_date
+        if mapping.get('created_date'):
+            try:
+                from datetime import datetime
+                # Parse created_date (format: YYYY-MM-DD)
+                submitted_date = datetime.strptime(str(mapping['created_date']), '%Y-%m-%d').date()
+                metadata['submitted_date'] = submitted_date
+            except Exception as e:
+                logger.warning(f"Could not parse created_date for run_id {run_id}: {e}")
 
     return metadata
 

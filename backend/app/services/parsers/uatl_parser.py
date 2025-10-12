@@ -91,6 +91,48 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
         # Get PDF format
         pdf_format = df.iloc[0].get('pdf_format', 1) if len(df) > 0 else 1
 
+        # Extract summary fields from PDF (only for format 1)
+        summary_email_address = None
+        summary_customer_name = None
+        summary_mobile_number = None
+        summary_statement_period = None
+        summary_request_date = None
+
+        if pdf_format == 1:
+            try:
+                import pdfplumber
+                from .pdf_utils import (
+                    extract_requestor_email,
+                    extract_customer_name,
+                    extract_mobile_number,
+                    extract_statement_period,
+                    extract_request_date
+                )
+                with pdfplumber.open(pdf_path) as pdf:
+                    if len(pdf.pages) > 0:
+                        first_page = pdf.pages[0]
+
+                        # Extract all summary fields
+                        summary_email_address = extract_requestor_email(first_page, pdf_format)
+                        summary_customer_name = extract_customer_name(first_page, pdf_format)
+                        summary_mobile_number = extract_mobile_number(first_page, pdf_format)
+                        summary_statement_period = extract_statement_period(first_page, pdf_format)
+                        summary_request_date = extract_request_date(first_page, pdf_format)
+
+                        # Log successful extractions
+                        if summary_email_address:
+                            logger.info(f"Extracted email address: {summary_email_address}")
+                        if summary_customer_name:
+                            logger.info(f"Extracted customer name: {summary_customer_name}")
+                        if summary_mobile_number:
+                            logger.info(f"Extracted mobile number: {summary_mobile_number}")
+                        if summary_statement_period:
+                            logger.info(f"Extracted statement period: {summary_statement_period}")
+                        if summary_request_date:
+                            logger.info(f"Extracted request date: {summary_request_date}")
+            except Exception as e:
+                logger.warning(f"Could not extract summary fields: {e}")
+
         # Extract PDF metadata
         pdf_meta = extract_pdf_metadata(pdf_path)
 
@@ -126,7 +168,6 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
             'run_id': run_id,
             'acc_prvdr_code': 'UATL',
             'acc_number': acc_number,
-            'pdf_format': pdf_format,
             'rm_name': None,  # Will be populated from mapper
             'num_rows': len(df),
             'sheet_md5': sheet_md5,
@@ -134,12 +175,19 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
             'summary_closing_balance': float(balance_summary.get('stmt_closing_balance', 0)),
             'stmt_opening_balance': float(df.iloc[0]['balance']) if len(df) > 0 else None,
             'stmt_closing_balance': float(df.iloc[-1]['balance']) if len(df) > 0 else None,
+            # Summary fields extracted from Airtel Format 1 PDFs
+            'summary_email_address': summary_email_address,
+            'summary_customer_name': summary_customer_name,
+            'summary_mobile_number': summary_mobile_number,
+            'summary_statement_period': summary_statement_period,
+            'summary_request_date': summary_request_date.date() if summary_request_date else None,
             'meta_title': pdf_meta.get('title'),
             'meta_author': pdf_meta.get('author'),
             'meta_producer': pdf_meta.get('producer'),
             'meta_created_at': parse_metadata_date(pdf_meta.get('created_at')),
             'meta_modified_at': parse_metadata_date(pdf_meta.get('modified_at')),
             'pdf_path': pdf_path,
+            'format': f'format_{pdf_format}',  # e.g., 'format_1' or 'format_2'
         }
 
         logger.info(f"Successfully parsed {len(raw_statements)} UATL transactions for {run_id}")

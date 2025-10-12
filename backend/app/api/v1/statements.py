@@ -56,7 +56,7 @@ async def list_statements(
                 acc_prvdr_code=meta.acc_prvdr_code,
                 rm_name=meta.rm_name,
                 num_rows=meta.num_rows,
-                pdf_format=meta.pdf_format,
+                pdf_format=meta.pdf_format,  # Property that extracts from format string
                 stmt_opening_balance=float(meta.stmt_opening_balance) if meta.stmt_opening_balance else None,
                 stmt_closing_balance=float(meta.stmt_closing_balance) if meta.stmt_closing_balance else None,
                 created_at=meta.created_at.isoformat() if meta.created_at else None
@@ -83,34 +83,63 @@ async def list_statements(
 @router.get("/unified-list")
 async def list_unified_statements(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=500),
+    page_size: int = Query(20, ge=1, le=500),
+    search: Optional[str] = Query(None, description="Search by run_id or acc_number"),
     acc_number: Optional[str] = Query(None),
     acc_prvdr_code: Optional[str] = Query(None),
     rm_name: Optional[str] = Query(None),
-    processing_status: Optional[str] = Query(None),  # IMPORTED or PROCESSED
+    status: Optional[str] = Query(None),  # Consolidated status: IMPORT_FAILED, IMPORTED, VERIFIED, VERIFIED_WITH_WARNINGS, VERIFICATION_FAILED, FLAGGED
+    processing_status: Optional[str] = Query(None),  # IMPORTED or PROCESSED (deprecated, use 'status')
+    parsing_status: Optional[str] = Query(None),  # SUCCESS or FAILED (deprecated, use 'status')
+    verification_status: Optional[str] = Query(None),  # PASS or FAIL (deprecated, use 'status')
+    from_date: Optional[str] = Query(None, description="Filter by submitted_date >= from_date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, description="Filter by submitted_date <= to_date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Get paginated list of unified statements (metadata + summary)
-    Shows import and processing status
+    Shows consolidated status for each statement
 
     Supports filtering by:
+    - search: Search in run_id or acc_number
     - acc_number: Account number
     - acc_prvdr_code: Provider code (UATL, UMTN)
     - rm_name: RM name
-    - processing_status: IMPORTED or PROCESSED
+    - status: IMPORT_FAILED, IMPORTED, VERIFIED, VERIFIED_WITH_WARNINGS, VERIFICATION_FAILED, FLAGGED
+    - from_date, to_date: Date range for submitted_date
     """
     try:
         # Build query
         where_clauses = []
+
+        # Search filter
+        if search:
+            where_clauses.append(f"(run_id LIKE '%{search}%' OR acc_number LIKE '%{search}%')")
+
         if acc_number:
             where_clauses.append(f"acc_number = '{acc_number}'")
         if acc_prvdr_code:
             where_clauses.append(f"acc_prvdr_code = '{acc_prvdr_code}'")
         if rm_name:
             where_clauses.append(f"rm_name LIKE '%{rm_name}%'")
+
+        # Consolidated status filter
+        if status:
+            where_clauses.append(f"status = '{status}'")
+
+        # Backward compatibility filters (deprecated)
         if processing_status:
             where_clauses.append(f"processing_status = '{processing_status}'")
+        if parsing_status:
+            where_clauses.append(f"parsing_status = '{parsing_status}'")
+        if verification_status:
+            where_clauses.append(f"verification_status = '{verification_status}'")
+
+        # Date range filters
+        if from_date:
+            where_clauses.append(f"submitted_date >= '{from_date}'")
+        if to_date:
+            where_clauses.append(f"submitted_date <= '{to_date}'")
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 
@@ -127,9 +156,17 @@ async def list_unified_statements(
                 run_id,
                 acc_number,
                 acc_prvdr_code,
+                format,
+                mime,
+                submitted_date,
+                start_date,
+                end_date,
                 rm_name,
                 num_rows,
+                parsing_status,
+                parsing_error,
                 imported_at,
+                status,
                 processing_status,
                 verification_status,
                 verification_reason,
@@ -162,24 +199,32 @@ async def list_unified_statements(
                 'run_id': row[1],
                 'acc_number': row[2],
                 'acc_prvdr_code': row[3],
-                'rm_name': row[4],
-                'num_rows': row[5],
-                'imported_at': row[6].isoformat() if row[6] else None,
-                'processing_status': row[7],
-                'verification_status': row[8],
-                'verification_reason': row[9],
-                'balance_match': row[10],
-                'duplicate_count': row[11],
-                'processed_at': row[12].isoformat() if row[12] else None,
-                'balance_diff_changes': row[13],
-                'balance_diff_change_ratio': float(row[14]) if row[14] else None,
-                'calculated_closing_balance': float(row[15]) if row[15] else None,
-                'stmt_closing_balance': float(row[16]) if row[16] else None,
-                'meta_title': row[17],
-                'meta_author': row[18],
-                'meta_producer': row[19],
-                'meta_created_at': row[20].isoformat() if row[20] else None,
-                'meta_modified_at': row[21].isoformat() if row[21] else None
+                'format': row[4],
+                'mime': row[5],
+                'submitted_date': row[6].isoformat() if row[6] else None,
+                'start_date': row[7].isoformat() if row[7] else None,
+                'end_date': row[8].isoformat() if row[8] else None,
+                'rm_name': row[9],
+                'num_rows': row[10],
+                'parsing_status': row[11],
+                'parsing_error': row[12],
+                'imported_at': row[13].isoformat() if row[13] else None,
+                'status': row[14],  # Consolidated status
+                'processing_status': row[15],
+                'verification_status': row[16],
+                'verification_reason': row[17],
+                'balance_match': row[18],
+                'duplicate_count': row[19],
+                'processed_at': row[20].isoformat() if row[20] else None,
+                'balance_diff_changes': row[21],
+                'balance_diff_change_ratio': float(row[22]) if row[22] else None,
+                'calculated_closing_balance': float(row[23]) if row[23] else None,
+                'stmt_closing_balance': float(row[24]) if row[24] else None,
+                'meta_title': row[25],
+                'meta_author': row[26],
+                'meta_producer': row[27],
+                'meta_created_at': row[28].isoformat() if row[28] else None,
+                'meta_modified_at': row[29].isoformat() if row[29] else None
             })
 
         total_pages = math.ceil(total / page_size) if total > 0 else 0

@@ -102,7 +102,7 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
             'run_id': run_id,
             'acc_prvdr_code': 'UMTN',
             'acc_number': acc_number if raw_statements else None,
-            'pdf_format': None,  # UMTN doesn't have PDF format
+            'format': 'excel',  # MTN uses Excel/CSV format
             'rm_name': None,  # Will be populated from mapper
             'num_rows': len(df),
             'sheet_md5': sheet_md5,

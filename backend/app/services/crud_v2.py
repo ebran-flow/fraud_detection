@@ -122,17 +122,40 @@ def list_metadata_with_pagination(
     """
     Get paginated list of metadata with optional filters
     Returns: (list of metadata, total count)
+
+    Supported filters:
+    - acc_number: Exact match
+    - acc_prvdr_code: Exact match
+    - rm_name: Partial match (LIKE)
+    - search: Search in run_id or acc_number
+    - from_date: Filter by submitted_date >= from_date
+    - to_date: Filter by submitted_date <= to_date
     """
     query = db.query(Metadata)
 
     # Apply filters
     if filters:
+        # Search filter (run_id or acc_number)
+        if 'search' in filters and filters['search']:
+            search_term = filters['search']
+            query = query.filter(
+                (Metadata.run_id.like(f"%{search_term}%")) |
+                (Metadata.acc_number.like(f"%{search_term}%"))
+            )
+
+        # Exact match filters
         if 'acc_number' in filters and filters['acc_number']:
             query = query.filter(Metadata.acc_number == filters['acc_number'])
         if 'acc_prvdr_code' in filters and filters['acc_prvdr_code']:
             query = query.filter(Metadata.acc_prvdr_code == filters['acc_prvdr_code'])
         if 'rm_name' in filters and filters['rm_name']:
             query = query.filter(Metadata.rm_name.like(f"%{filters['rm_name']}%"))
+
+        # Date range filters
+        if 'from_date' in filters and filters['from_date']:
+            query = query.filter(Metadata.submitted_date >= filters['from_date'])
+        if 'to_date' in filters and filters['to_date']:
+            query = query.filter(Metadata.submitted_date <= filters['to_date'])
 
     # Get total count
     total = query.count()
