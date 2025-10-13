@@ -200,6 +200,11 @@ def detect_special_transactions(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[dealloc_mask, 'is_special_txn'] = True
     df.loc[dealloc_mask, 'special_txn_type'] = 'Deallocation Transfer'
 
+    # Transaction Reversal
+    reversal_mask = df['description'].str.contains('Transaction Reversal', case=False, na=False)
+    df.loc[reversal_mask, 'is_special_txn'] = True
+    df.loc[reversal_mask, 'special_txn_type'] = 'Transaction Reversal'
+
     # Rollback
     rollback_mask = df['description'].str.contains('Rollback', case=False, na=False)
     df.loc[rollback_mask, 'is_special_txn'] = True
@@ -287,6 +292,7 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     Calculate running balance and compare with statement balance
     Track balance differences and change counts
     Supports different balance fields per provider (UATL: 'balance', UMTN: 'float_balance')
+    Transaction Reversals are treated as normal transactions
     """
     # For Format 1, optimize same-timestamp transaction ordering
     if pdf_format == 1:
@@ -345,9 +351,10 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             df.at[df.index[idx], 'calculated_running_balance'] = running_balance
             df.at[df.index[idx], 'balance_diff'] = balance_diff
 
-        # For other special transactions (Deallocation, Reversal, Rollback),
+        # For special transactions (Deallocation, Rollback) except Commission Disbursement,
         # copy both calculated_running_balance and balance_diff from previous row
-        elif row.get('is_special_txn', False):
+        # Transaction Reversals are now treated as NORMAL transactions (see else block below)
+        elif row.get('is_special_txn', False) and row.get('special_txn_type') in ['Deallocation Transfer', 'Rollback']:
             # Don't update running_balance - keep it the same
             # Copy balance_diff from previous row as well
             logger.debug(f"Skipping balance calculation for special transaction: {row.get('special_txn_type')}")
