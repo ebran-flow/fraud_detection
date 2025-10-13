@@ -288,6 +288,78 @@ def optimize_same_timestamp_transactions(df: pd.DataFrame, pdf_format: int, bala
     return pd.concat(optimized_groups, ignore_index=True)
 
 
+def optimize_same_timestamp_transactions_mtn(df: pd.DataFrame, balance_field: str) -> pd.DataFrame:
+    """
+    For same-timestamp transactions in MTN, find the correct order by testing permutations
+    Similar to UATL logic but uses MTN-specific balance calculation
+    """
+    from itertools import permutations
+
+    # Sort by timestamp and balance descending as initial ordering
+    df = df.sort_values(['txn_date', balance_field], ascending=[True, False]).reset_index(drop=True)
+
+    # Group by timestamp and optimize each group
+    optimized_groups = []
+    prev_running_balance = 0
+
+    for txn_date, group in df.groupby('txn_date', sort=False):
+        # If only one transaction at this timestamp, no need to optimize
+        if len(group) == 1:
+            optimized_groups.append(group)
+            continue
+
+        # Get the previous running balance
+        if len(optimized_groups) == 0:
+            # For first group, use descending balance order
+            optimized_group = group.sort_values(balance_field, ascending=False).reset_index(drop=True)
+        else:
+            # For groups > 6, use descending balance order (too many permutations)
+            if len(group) > 6:
+                logger.warning(f"MTN: {len(group)} transactions at {txn_date}, using balance sort (too many permutations)")
+                optimized_group = group.sort_values(balance_field, ascending=False).reset_index(drop=True)
+            else:
+                # Try all permutations to find the best order
+                prev_running_balance = optimized_groups[-1].iloc[-1][balance_field]
+                best_order = None
+                best_score = -1
+
+                indices = list(range(len(group)))
+                for perm in permutations(indices):
+                    test_df = group.iloc[list(perm)].reset_index(drop=True)
+                    score = 0
+                    running_bal = prev_running_balance
+
+                    for i in range(len(test_df)):
+                        row = test_df.iloc[i]
+
+                        # Apply MTN transaction to get expected balance
+                        expected_bal = apply_transaction_mtn(
+                            running_bal,
+                            row['amount'],
+                            str(row.get('txn_type', '')),
+                            row['fee']
+                        )
+
+                        # Check if it matches the row's statement balance
+                        if abs(expected_bal - float(row[balance_field])) < 0.01:
+                            score += 1
+
+                        # Update running balance to this row's statement balance
+                        running_bal = float(row[balance_field])
+
+                    if score > best_score:
+                        best_score = score
+                        best_order = test_df
+
+                optimized_group = best_order if best_order is not None else group
+                logger.debug(f"MTN: Optimized {len(group)} transactions at {txn_date}, best score: {best_score}/{len(group)}")
+
+        optimized_groups.append(optimized_group)
+
+    # Recombine all groups
+    return pd.concat(optimized_groups, ignore_index=True)
+
+
 def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: str, balance_field: str) -> pd.DataFrame:
     """
     Calculate running balance and compare with statement balance
@@ -302,6 +374,9 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     # For Format 1, further optimize same-timestamp transaction ordering with permutations
     if pdf_format == 1:
         df = optimize_same_timestamp_transactions(df, pdf_format, balance_field)
+    # For MTN, apply MTN-specific optimization for same-timestamp transactions
+    elif provider_code == 'UMTN':
+        df = optimize_same_timestamp_transactions_mtn(df, balance_field)
 
     df['calculated_running_balance'] = None
     df['balance_diff'] = None
