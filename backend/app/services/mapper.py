@@ -73,14 +73,23 @@ def get_mapping_by_run_id(run_id: str) -> Optional[Dict[str, Any]]:
         return None
 
     row = match.iloc[0]
+
+    # Helper function to convert pandas nan to None
+    def safe_get(key, default=None):
+        val = row.get(key, default)
+        # Convert pandas nan to None
+        if pd.isna(val):
+            return None
+        return val
+
     return {
-        'run_id': row.get('run_id'),
-        'acc_number': row.get('acc_number'),
-        'rm_name': row.get('rm_name'),
-        'acc_prvdr_code': row.get('acc_prvdr_code', 'UATL'),
-        'status': row.get('status'),
-        'lambda_status': row.get('lambda_status'),
-        'created_date': row.get('created_date'),
+        'run_id': safe_get('run_id'),
+        'acc_number': safe_get('acc_number'),
+        'rm_name': safe_get('rm_name'),
+        'acc_prvdr_code': safe_get('acc_prvdr_code', 'UATL'),
+        'status': safe_get('status'),
+        'lambda_status': safe_get('lambda_status'),
+        'created_date': safe_get('created_date'),
     }
 
 
@@ -102,14 +111,23 @@ def get_mapping_by_acc_number(acc_number: str) -> Optional[Dict[str, Any]]:
 
     # Return most recent record
     row = matches.iloc[-1]
+
+    # Helper function to convert pandas nan to None
+    def safe_get(key, default=None):
+        val = row.get(key, default)
+        # Convert pandas nan to None
+        if pd.isna(val):
+            return None
+        return val
+
     return {
-        'run_id': row.get('run_id'),
-        'acc_number': row.get('acc_number'),
-        'rm_name': row.get('rm_name'),
-        'acc_prvdr_code': row.get('acc_prvdr_code', 'UATL'),
-        'status': row.get('status'),
-        'lambda_status': row.get('lambda_status'),
-        'created_date': row.get('created_date'),
+        'run_id': safe_get('run_id'),
+        'acc_number': safe_get('acc_number'),
+        'rm_name': safe_get('rm_name'),
+        'acc_prvdr_code': safe_get('acc_prvdr_code', 'UATL'),
+        'status': safe_get('status'),
+        'lambda_status': safe_get('lambda_status'),
+        'created_date': safe_get('created_date'),
     }
 
 
