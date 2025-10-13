@@ -224,39 +224,112 @@ def apply_transaction_format2(balance: float, amount: float, description: str = 
 
 
 # ============================================================================
-# MTN LOGIC (similar to Format 2 but uses float_balance field)
+# MTN LOGIC (transaction-type-specific balance calculation)
 # ============================================================================
 
-def calculate_opening_balance_mtn(first_balance: float, first_amount: float) -> float:
+def calculate_opening_balance_mtn(first_balance: float, first_amount: float,
+                                   first_txn_type: str, first_fee: float = 0) -> float:
     """
-    Calculate opening balance for MTN (same as Format 2).
+    Calculate opening balance for MTN.
 
-    Logic: Opening = Balance - amount
+    MTN Logic (based on transaction type):
+    - CASH_OUT: Agent gives cash, receives mobile money -> balance increases
+      Opening = Balance - amount + fee
+    - CASH_IN: Agent receives cash, pays mobile money -> balance decreases
+      Opening = Balance + amount + fee
+    - BILL PAYMENT: Agent pays bill -> balance decreases
+      Opening = Balance + amount + fee
+    - TRANSFER: Amount is signed
+      Opening = Balance - amount + fee
+
+    Note: Fees reduce balance, commission/tax don't affect float_balance
 
     Args:
         first_balance: Float balance from first transaction
-        first_amount: Amount (signed, fees included)
+        first_amount: Transaction amount
+        first_txn_type: Transaction type (CASH_OUT, CASH_IN, BILL PAYMENT, TRANSFER, etc.)
+        first_fee: Transaction fee (default 0)
 
     Returns:
         Opening balance
     """
-    return calculate_opening_balance_format2(first_balance, first_amount)
+    first_balance = float(first_balance)
+    first_amount = float(first_amount)
+    first_fee = float(first_fee) if first_fee else 0.0
+    txn_type = str(first_txn_type).upper()
+
+    if txn_type == 'CASH_OUT':
+        # Agent gives cash, receives mobile money -> balance increases
+        # Opening = Balance - amount + fee
+        return first_balance - first_amount + first_fee
+    elif txn_type in ['CASH_IN', 'BILL PAYMENT', 'DEBIT', 'ADJUSTMENT']:
+        # Agent receives cash/pays bill/debit/adjustment -> balance decreases
+        # Opening = Balance + amount + fee
+        return first_balance + first_amount + first_fee
+    elif txn_type in ['DEPOSIT', 'REFUND']:
+        # Deposit/Refund -> balance increases by (amount - fee)
+        # Opening = Balance - (amount - fee)
+        return first_balance - first_amount + first_fee
+    elif txn_type in ['REVERSAL', 'LOAN_REPAYMENT']:
+        # Reversal/Loan repayment -> complex, treat as signed with fee adjustment
+        # Opening = Balance - amount + fee
+        return first_balance - first_amount + first_fee
+    else:  # TRANSFER, BATCH_TRANSFER, or other types
+        # Amount is signed (negative=outgoing, positive=incoming)
+        # Opening = Balance - amount + fee
+        return first_balance - first_amount + first_fee
 
 
-def apply_transaction_mtn(balance: float, amount: float) -> float:
+def apply_transaction_mtn(balance: float, amount: float, txn_type: str, fee: float = 0) -> float:
     """
-    Apply transaction to balance for MTN (same as Format 2).
+    Apply transaction to balance for MTN.
 
-    Logic: New Balance = Balance + amount
+    MTN Logic (based on transaction type):
+    - CASH_OUT: Agent gives cash, receives mobile money -> balance increases
+      New Balance = Balance + amount - fee
+    - CASH_IN: Agent receives cash, pays mobile money -> balance decreases
+      New Balance = Balance - amount - fee
+    - BILL PAYMENT: Agent pays bill -> balance decreases
+      New Balance = Balance - amount - fee
+    - TRANSFER: Amount is signed
+      New Balance = Balance + amount - fee
+
+    Note: Fees reduce balance, commission/tax don't affect float_balance
 
     Args:
         balance: Current balance
-        amount: Amount (signed, fees included)
+        amount: Transaction amount
+        txn_type: Transaction type (CASH_OUT, CASH_IN, BILL PAYMENT, TRANSFER, etc.)
+        fee: Transaction fee (default 0)
 
     Returns:
         New balance
     """
-    return apply_transaction_format2(balance, amount)
+    balance = float(balance)
+    amount = float(amount)
+    fee = float(fee) if fee else 0.0
+    txn_type = str(txn_type).upper()
+
+    if txn_type == 'CASH_OUT':
+        # Agent gives cash, receives mobile money -> balance increases
+        # New Balance = Balance + amount - fee
+        return balance + amount - fee
+    elif txn_type in ['CASH_IN', 'BILL PAYMENT', 'DEBIT', 'ADJUSTMENT']:
+        # Agent receives cash/pays bill/debit/adjustment -> balance decreases
+        # New Balance = Balance - amount - fee
+        return balance - amount - fee
+    elif txn_type in ['DEPOSIT', 'REFUND']:
+        # Deposit/Refund -> balance increases by (amount - fee)
+        # New Balance = Balance + (amount - fee)
+        return balance + amount - fee
+    elif txn_type in ['REVERSAL', 'LOAN_REPAYMENT']:
+        # Reversal/Loan repayment -> complex, amount includes fee adjustment
+        # New Balance = Balance + amount - fee
+        return balance + amount - fee
+    else:  # TRANSFER, BATCH_TRANSFER, or other types
+        # Amount is signed (negative=outgoing, positive=incoming)
+        # New Balance = Balance + amount - fee
+        return balance + amount - fee
 
 
 # ============================================================================

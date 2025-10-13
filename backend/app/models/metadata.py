@@ -38,7 +38,7 @@ class Metadata(Base):
     pdf_path = Column(String(512))
     # New columns
     format = Column(String(20))  # Format of the statement (e.g., format_1, format_2)
-    mime = Column(String(50))  # MIME type (e.g., application/pdf, text/csv)
+    mime = Column(String(100))  # MIME type (e.g., application/pdf, text/csv)
     submitted_date = Column(Date)  # From mapper.csv using run_id → created_date
     start_date = Column(Date)  # min(txn_date) from raw_statements
     end_date = Column(Date)  # max(txn_date) from raw_statements

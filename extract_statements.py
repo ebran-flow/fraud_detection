@@ -28,17 +28,59 @@ logger = logging.getLogger(__name__)
 
 
 def detect_file_type(file_path: Path) -> str:
-    """Detect file type. Returns: 'pdf', 'csv', or 'xlsx'"""
-    mime = magic.from_file(str(file_path), mime=True)
+    """
+    Detect file type using magic bytes.
+    Returns: 'pdf', 'csv', or 'xlsx'
+    """
+    try:
+        # Read first few bytes to check for magic signatures
+        with open(file_path, 'rb') as f:
+            magic_bytes = f.read(8)
 
-    if mime == 'application/pdf':
-        return 'pdf'
-    elif mime in ['text/csv', 'text/plain']:
-        return 'csv'
-    elif mime in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
+        # Check for PDF signature
+        if magic_bytes.startswith(b'%PDF'):
+            return 'pdf'
+
+        # Check for ZIP signature (XLSX files are ZIP-based)
+        # PK\x03\x04 is the signature for ZIP files
+        if magic_bytes[:4] == b'PK\x03\x04':
+            # XLSX files are ZIP archives, verify by checking mime type
+            mime = magic.from_file(str(file_path), mime=True)
+            if 'spreadsheet' in mime or 'excel' in mime or mime == 'application/zip':
+                # It's likely an XLSX file
+                return 'xlsx'
+
+        # Use python-magic for other types
+        mime = magic.from_file(str(file_path), mime=True)
+
+        if mime == 'application/pdf':
+            return 'pdf'
+        elif mime in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     'application/vnd.ms-excel', 'application/x-ole-storage']:
+            return 'xlsx'
+        elif mime in ['text/csv', 'text/plain']:
+            # Double-check it's actually CSV by reading first line
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    first_line = f.read(200)
+                    # If it has commas and no binary characters, it's likely CSV
+                    if ',' in first_line and '\x00' not in first_line:
+                        return 'csv'
+            except UnicodeDecodeError:
+                # If it can't be decoded as UTF-8, it's not a text CSV
+                pass
+
+        # If we can't determine, check if it looks like XLSX (ZIP format)
+        if magic_bytes[:2] == b'PK':
+            return 'xlsx'
+
+        # Last resort: default to xlsx since most UMTN files are XLSX
+        logger.warning(f"Could not detect file type for {file_path.name}, MIME: {mime}, defaulting to xlsx")
         return 'xlsx'
 
-    return 'csv'  # Default to csv
+    except Exception as e:
+        logger.error(f"Error detecting file type for {file_path}: {e}")
+        return 'xlsx'  # Default to xlsx on error
 
 
 def is_zip_file(file_path: Path) -> bool:

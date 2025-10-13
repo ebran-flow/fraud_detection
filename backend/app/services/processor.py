@@ -104,11 +104,12 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
                 'balance_diff_change_count': int(row.get('balance_diff_change_count', 0)),
             }
 
-            # Add balance field (provider-specific)
+            # Add balance field (provider-specific field name)
+            # UATL uses 'balance', UMTN uses 'float_balance'
             if balance_field in row and pd.notna(row[balance_field]):
-                processed_stmt['balance'] = float(row[balance_field])
+                processed_stmt[balance_field] = float(row[balance_field])
             else:
-                processed_stmt['balance'] = None
+                processed_stmt[balance_field] = None
 
             processed_statements.append(processed_stmt)
 
@@ -294,7 +295,11 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     Supports different balance fields per provider (UATL: 'balance', UMTN: 'float_balance')
     Transaction Reversals are treated as normal transactions
     """
-    # For Format 1, optimize same-timestamp transaction ordering
+    # Sort transactions by date, then by balance descending for same timestamp
+    # This ensures correct ordering when multiple transactions have the same timestamp
+    df = df.sort_values(['txn_date', balance_field], ascending=[True, False]).reset_index(drop=True)
+
+    # For Format 1, further optimize same-timestamp transaction ordering with permutations
     if pdf_format == 1:
         df = optimize_same_timestamp_transactions(df, pdf_format, balance_field)
 
@@ -312,10 +317,11 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     first_fee = first_row['fee']
     first_direction = str(first_row.get('txn_direction', ''))
     first_description = str(first_row.get('description', ''))
+    first_txn_type = str(first_row.get('txn_type', ''))
 
     # Choose appropriate function based on format and provider
     if provider_code == 'UMTN':
-        opening_balance = calculate_opening_balance_mtn(first_balance, first_amount)
+        opening_balance = calculate_opening_balance_mtn(first_balance, first_amount, first_txn_type, first_fee)
     elif pdf_format == 2:
         opening_balance = calculate_opening_balance_format2(first_balance, first_amount, first_description)
     elif is_format1_csv(df, pdf_format):
@@ -368,9 +374,10 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             fee = row['fee']
             direction = str(row.get('txn_direction', ''))
             description = str(row.get('description', ''))
+            txn_type = str(row.get('txn_type', ''))
 
             if provider_code == 'UMTN':
-                running_balance = apply_transaction_mtn(running_balance, amount)
+                running_balance = apply_transaction_mtn(running_balance, amount, txn_type, fee)
             elif pdf_format == 2:
                 running_balance = apply_transaction_format2(running_balance, amount, description)
             elif is_format1_csv(df, pdf_format):

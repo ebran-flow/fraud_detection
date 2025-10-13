@@ -1,6 +1,7 @@
 """
 UMTN (MTN) Parser
 Handles Excel/CSV format MTN Mobile Money statements
+Uses xlrd3 for legacy Excel files that have compatibility issues with openpyxl
 """
 import os
 import hashlib
@@ -8,8 +9,40 @@ import logging
 from typing import Dict, List, Any, Tuple
 from datetime import datetime
 import pandas as pd
+import xlrd3 as xlrd
+from ..mapper import get_mapping_by_run_id
 
 logger = logging.getLogger(__name__)
+
+
+def jsonify_worksheet(worksheet):
+    """Convert xlrd worksheet to list of dictionaries"""
+    rows_dict = []
+    header = [cell.value for cell in worksheet.row(0)]
+    for row_idx in range(1, worksheet.nrows):
+        row_dict = {}
+        NUMBER_TYPE = 2
+        for col_idx, cell in enumerate(worksheet.row(row_idx)):
+            # Convert number cells to string (preserving int values)
+            cell_value = str(int(float(cell.value))) if cell.ctype == NUMBER_TYPE else cell.value
+            row_dict[header[col_idx]] = cell_value
+        rows_dict.append(row_dict)
+    return rows_dict
+
+
+def get_df_from_mtn_excel(file_path: str) -> pd.DataFrame:
+    """
+    Read MTN Excel file using xlrd3 (handles legacy Excel formats)
+    """
+    with open(file_path, 'rb') as f:
+        file_contents = f.read()
+
+    workbook = xlrd.open_workbook(file_contents=file_contents)
+    sheet_name = workbook.sheet_names()[0]
+    loaded_sheet = workbook.sheet_by_name(sheet_name)
+    json_data = jsonify_worksheet(loaded_sheet)
+    df = pd.DataFrame(json_data)
+    return df
 
 
 def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -26,17 +59,21 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
     logger.info(f"Parsing UMTN file: {file_path} with run_id: {run_id}")
 
     try:
+        # Get account number from mapper.csv
+        mapper_data = get_mapping_by_run_id(run_id)
+        if not mapper_data:
+            logger.warning(f"No mapper data found for run_id: {run_id}")
+            acc_number = None
+        else:
+            acc_number = mapper_data.get('acc_number')
+            logger.info(f"Found acc_number from mapper: {acc_number}")
+
         # Read file (supports both CSV and Excel)
         if file_path.lower().endswith('.csv'):
             df = pd.read_csv(file_path)
         elif file_path.lower().endswith(('.xlsx', '.xls')):
-            # Try reading with pandas
-            try:
-                df = pd.read_excel(file_path, engine='openpyxl')
-            except:
-                # If pandas fails, convert to CSV using LibreOffice and retry
-                csv_path = convert_excel_to_csv(file_path)
-                df = pd.read_csv(csv_path)
+            # Use xlrd3 for legacy Excel files (MTN uses old Excel generators)
+            df = get_df_from_mtn_excel(file_path)
         else:
             raise ValueError(f"Unsupported file format: {file_path}")
 
@@ -51,38 +88,44 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
             # Parse date/time
             txn_date = parse_umtn_datetime(row.get('Date / Time'))
 
+            # Helper to safely convert to float (handles strings from xlrd3)
+            def safe_float(val):
+                if pd.isna(val) or val == '' or val == 'None':
+                    return None
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    return None
+
             # Determine transaction direction from amount
-            amount = float(row['Amount']) if pd.notna(row['Amount']) else 0
+            amount = safe_float(row.get('Amount'))
+            if amount is None:
+                amount = 0.0
             txn_direction = 'Credit' if amount > 0 else 'Debit'
 
-            # Extract account number from From Account or To Account
-            from_acc = str(row['From Account']) if pd.notna(row['From Account']) else ''
-            to_acc = str(row['To Account']) if pd.notna(row['To Account']) else ''
-
-            # Account number is usually the agent's number
-            # For CASH_IN/CASH_OUT, agent is in From Account
-            # For TRANSFER, agent could be either
-            acc_number = extract_account_number(from_acc, to_acc, row['Transaction Type'])
+            # Extract from/to accounts
+            from_acc = str(row.get('From Account', '')) if pd.notna(row.get('From Account')) else ''
+            to_acc = str(row.get('To Account', '')) if pd.notna(row.get('To Account')) else ''
 
             raw_stmt = {
                 'run_id': run_id,
-                'acc_number': acc_number,
-                'txn_id': str(row['Transaction ID']) if pd.notna(row['Transaction ID']) else '',
+                'acc_number': acc_number,  # From mapper.csv
+                'txn_id': str(row.get('Transaction ID', '')) if pd.notna(row.get('Transaction ID')) else '',
                 'txn_date': txn_date,
-                'txn_type': str(row['Transaction Type']) if pd.notna(row['Transaction Type']) else '',
-                'description': f"{row['Transaction Type']} - {from_acc} to {to_acc}",
+                'txn_type': str(row.get('Transaction Type', '')) if pd.notna(row.get('Transaction Type')) else '',
+                'description': f"{row.get('Transaction Type', '')} - {from_acc} to {to_acc}",
                 'from_acc': from_acc,
                 'to_acc': to_acc,
                 'status': 'success',  # UMTN only shows successful transactions
                 'txn_direction': txn_direction,
                 'amount': amount,
-                'fee': float(row['Fee']) if pd.notna(row['Fee']) else 0.0,
+                'fee': safe_float(row.get('Fee')) or 0.0,
                 # UMTN-specific fields
-                'commission_amount': float(row['Commision Amount']) if pd.notna(row['Commision Amount']) else None,
-                'tax': float(row['TAX']) if pd.notna(row['TAX']) else None,
-                'commission_receiving_no': str(row['Commision Receiving No.']) if pd.notna(row['Commision Receiving No.']) else None,
-                'commission_balance': float(row['Commision Balance']) if pd.notna(row['Commision Balance']) else None,
-                'float_balance': float(row['Float Balance']) if pd.notna(row['Float Balance']) else None,
+                'commission_amount': safe_float(row.get('Commision Amount')),
+                'tax': safe_float(row.get('TAX')),
+                'commission_receiving_no': str(row.get('Commision Receiving No.', '')) if pd.notna(row.get('Commision Receiving No.')) and str(row.get('Commision Receiving No.', '')) != 'None' else None,
+                'commission_balance': safe_float(row.get('Commision Balance')),
+                'float_balance': safe_float(row.get('Float Balance')),
             }
             raw_statements.append(raw_stmt)
 
@@ -101,7 +144,7 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
         metadata = {
             'run_id': run_id,
             'acc_prvdr_code': 'UMTN',
-            'acc_number': acc_number if raw_statements else None,
+            'acc_number': acc_number,  # From mapper.csv
             'format': 'excel',  # MTN uses Excel/CSV format
             'rm_name': None,  # Will be populated from mapper
             'num_rows': len(df),

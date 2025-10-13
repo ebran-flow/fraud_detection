@@ -1,0 +1,1129 @@
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/6540bd9a4035d.csv: 'utf-8' codec can't decode byte 0xc7 in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/654221137bfe6.csv: 'utf-8' codec can't decode byte 0xc9 in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65424e13ee9d3.csv: 'utf-8' codec can't decode byte 0x80 in position 11: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65843f753694f.csv: 'utf-8' codec can't decode byte 0x84 in position 11: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/659ebab6d6c64.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65a5246d9e56a.csv: 'utf-8' codec can't decode byte 0xb2 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65c1e2a8bcfe6.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65c36d37da33e.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65e6eda76354e.csv: 'utf-8' codec can't decode byte 0xf7 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/65e81d5bcaafb.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+================================================================================
+COMPREHENSIVE UMTN TESTING
+================================================================================
+
+Step 1: Analyzing mapper.csv...
+--------------------------------------------------------------------------------
+Total UMTN files with score_calc_success: 7755
+
+Files by month:
+  2023-10: 1 files
+  2023-11: 28 files
+  2023-12: 3 files
+  2024-01: 10 files
+  2024-02: 15 files
+  2024-03: 32 files
+  2024-04: 70 files
+  2024-05: 143 files
+  2024-06: 261 files
+  2024-07: 427 files
+  2024-08: 546 files
+  2024-09: 596 files
+  2024-10: 611 files
+  2024-11: 553 files
+  2024-12: 526 files
+  2025-01: 591 files
+  2025-02: 437 files
+  2025-03: 393 files
+  2025-04: 484 files
+  2025-05: 458 files
+  2025-06: 291 files
+  2025-07: 317 files
+  2025-08: 355 files
+  2025-09: 439 files
+  2025-10: 168 files
+
+================================================================================
+Step 2: Sampling files (2 XLSX + 2 CSV per month)...
+--------------------------------------------------------------------------------
+
+2023-10:
+  ✓ CSV: 6540bd9a4035d
+  ⚠️  Warning: Only found 0 XLSX and 1 CSV files
+
+2023-11:
+  ✓ CSV: 654221137bfe6
+  ✓ CSV: 65424e13ee9d3
+  ✓ XLSX: 65670b4f283af
+  ⚠️  Warning: Only found 1 XLSX and 2 CSV files
+
+2023-12:
+  ✓ XLSX: 657dd50270b2f
+  ✓ XLSX: 65805b3eb5340
+  ✓ CSV: 65843f753694f
+  ⚠️  Warning: Only found 2 XLSX and 1 CSV files
+
+2024-01:
+  ✓ CSV: 659ebab6d6c64
+  ✓ CSV: 65a5246d9e56a
+  ✓ XLSX: 65aa8fa085892
+  ✓ XLSX: 65b28d5c0fd93
+
+2024-02:
+  ✓ CSV: 65c1e2a8bcfe6
+  ✓ CSV: 65c36d37da33e
+  ⚠️  Warning: Only found 0 XLSX and 2 CSV files
+
+2024-03:
+  ✓ XLSX: 65e6e933d5b0c
+  ✓ CSV: 65e6eda76354e
+  ✓ CSV: 65e81d5bcaafb
+  ✓ XLSX: 65f047113889b
+
+2024-04:
+  ✓ CSV: 660bb89400370
+  ✓ CSV: 660bc18fc3d9a
+  ✓ XLSX: 660be97d1139a
+  ✓ XLSX: 660e6066b1dab
+
+2024-05:
+  ✓ CSV: 663315fb9ae34
+  ✓ CSV: 66338301a1ce3
+  ✓ XLSX: 6639e91a28ee4
+  ✓ XLSX: 663a1921d7189
+
+2024-06:
+  ✓ CSV: 665b059350b68
+  ✓ CSV: 665b2b23c3938
+  ✓ XLSX: 665ef49b405ed
+  ✓ XLSX: 665f0c8a236e3
+
+2024-07:
+  ✓ XLSX: 668243294a285
+  ✓ CSV: 6682561f80677
+  ✓ CSV: 6682688e23e28
+  ✓ XLSX: 6682c177ee868
+
+2024-08:
+  ✓ CSV: 66ab287202d00
+  ✓ CSV: 66ab30c881b9c
+  ✓ XLSX: 66ab3d92c1ff0
+  ✓ XLSX: 66ab496932980
+
+2024-09:
+  ✓ CSV: 66d56fbf8821f
+  ✓ CSV: 66d5722bcea4e
+  ✓ XLSX: 66d5b6488d178
+  ✓ XLSX: 66d5e28843072
+
+2024-10:
+  ✓ CSV: 66fb7597129e4
+  ✓ XLSX: 66fb94dcafb96
+  ✓ CSV: 66fbaad28122f
+  ✓ XLSX: 66fbf84fb5453
+
+2024-11:
+  ✓ CSV: 67247cd10446a
+  ✓ CSV: 672494aaacff6
+  ✓ XLSX: 6729b852df93f
+  ✓ XLSX: 672a012540926
+
+2024-12:
+  ✓ CSV: 674c6a83149e3
+  ✓ CSV: 674c6ebbf2426
+  ✓ XLSX: 674d664b7aaaf
+  ✓ XLSX: 674da8415e7cf
+
+2025-01:
+  ✓ CSV: 67764d183da0b
+  ✓ CSV: 67768fd5b1ec2
+  ✓ XLSX: 677bf11e991e7
+  ✓ XLSX: 677cc990a44d0
+
+2025-02:
+  ✓ XLSX: 679d7badbc313
+  ✓ CSV: 679de0de23aee
+  ✓ CSV: 679df0e7c3f99
+  ✓ XLSX: 679e346a28a3d
+
+2025-03:
+  ✓ XLSX: 67c2bb090b8e5
+  ✓ CSV: 67c551d5495b2
+  ✓ CSV: 67c55841b46f4
+  ✓ XLSX: 67c94a0796db7
+
+2025-04:
+  ✓ CSV: 67eb81609053e
+  ✓ CSV: 67eb83b28f5f7
+  ✓ XLSX: 67ee510c96473
+  ✓ XLSX: 67f63d6ccf1d2
+
+2025-05:
+  ✓ CSV: 68130f7550c19
+  ✓ CSV: 681313fd9e5e8
+  ✓ XLSX: 681475d42984a
+  ✓ XLSX: 6815f035bcd2a
+
+2025-06:
+  ✓ CSV: 683d52936180f
+  ✓ CSV: 683d61408007c
+  ✓ XLSX: 684008c412cf6
+  ✓ XLSX: 684010c4193d5
+
+2025-07:
+  ✓ CSV: 68639805a5be1
+  ✓ XLSX: 68639937f2428
+  ✓ CSV: 6863a6d31a7e6
+  ✓ XLSX: 6863b346144ea
+
+2025-08:
+  ✓ CSV: 688c6732ad203
+  ✓ CSV: 688c6c8865ce8
+  ✓ XLSX: 688c7bf539835
+  ✓ XLSX: 688c846e2c646
+
+2025-09:
+  ✓ CSV: 68b53484e2b54
+  ✓ CSV: 68b5403020362
+  ✓ XLSX: 68b6a8d69dadd
+  ✓ XLSX: 68b8323d4f39f
+
+2025-10:
+  ✓ CSV: 68dcbc97ad59f
+  ✓ CSV: 68dcda475daad
+  ✓ XLSX: 68de879e0c505
+  ✓ XLSX: 68dfc2c5649dc
+
+================================================================================
+Total samples: 93 files
+================================================================================
+
+Step 3: Processing samples and checking formats...
+--------------------------------------------------------------------------------
+
+[1/93] Processing 2023-10 - CSV: 6540bd9a4035d
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xc7 in position 10: invalid continuation byte
+
+[2/93] Processing 2023-11 - CSV: 654221137bfe6
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xc9 in position 10: invalid continuation byte
+
+[3/93] Processing 2023-11 - CSV: 65424e13ee9d3
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x80 in position 11: invalid start byte
+
+[4/93] Processing 2023-11 - XLSX: 65670b4f283af
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1188 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1188 transactions
+  Duplicates: 0
+
+[5/93] Processing 2023-12 - XLSX: 657dd50270b2f
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 6174 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 6174 transactions
+  Duplicates: 0
+
+[6/93] Processing 2023-12 - XLSX: 65805b3eb5340
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1173 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 1173 transactions
+  Duplicates: 0
+
+[7/93] Processing 2023-12 - CSV: 65843f753694f
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x84 in position 11: invalid start byte
+
+[8/93] Processing 2024-01 - CSV: 659ebab6d6c64
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[9/93] Processing 2024-01 - CSV: 65a5246d9e56a
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xb2 in position 10: invalid start byte
+
+[10/93] Processing 2024-01 - XLSX: 65aa8fa085892
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 6988 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 6988 transactions
+  Duplicates: 0
+
+[11/93] Processing 2024-01 - XLSX: 65b28d5c0fd93
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 299 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 299 transactions
+  Duplicates: 0
+
+[12/93] Processing 2024-02 - CSV: 65c1e2a8bcfe6
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[13/93] Processing 2024-02 - CSV: 65c36d37da33e
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[14/93] Processing 2024-03 - XLSX: 65e6e933d5b0c
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 5517 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 5517 transactions
+  Duplicates: 0
+
+[15/93] Processing 2024-03 - CSV: 65e6eda76354e
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xf7 in position 10: invalid start byte
+
+[16/93] Processing 2024-03 - CSV: 65e81d5bcaafb
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[17/93] Processing 2024-03 - XLSX: 65f047113889b
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/660bb89400370.csv: 'utf-8' codec can't decode byte 0xcf in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/660bc18fc3d9a.csv: 'utf-8' codec can't decode byte 0x8b in position 11: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/663315fb9ae34.csv: 'utf-8' codec can't decode byte 0x9d in position 12: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66338301a1ce3.csv: 'utf-8' codec can't decode byte 0xa2 in position 12: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/665b059350b68.csv: 'utf-8' codec can't decode byte 0xc1 in position 12: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/665b2b23c3938.csv: 'utf-8' codec can't decode byte 0xbb in position 12: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/6682561f80677.csv: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/6682688e23e28.csv: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66ab287202d00.csv: 'utf-8' codec can't decode byte 0xd4 in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66ab30c881b9c.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66d56fbf8821f.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66d5722bcea4e.csv: 'utf-8' codec can't decode byte 0x88 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66fb7597129e4.csv: 'utf-8' codec can't decode byte 0x9c in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/66fbaad28122f.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67247cd10446a.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/672494aaacff6.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/674c6a83149e3.csv: 'utf-8' codec can't decode byte 0xa7 in position 10: invalid start byte
+  ✓ Imported 4323 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 4323 transactions
+  Duplicates: 0
+
+[18/93] Processing 2024-04 - CSV: 660bb89400370
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xcf in position 10: invalid continuation byte
+
+[19/93] Processing 2024-04 - CSV: 660bc18fc3d9a
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x8b in position 11: invalid start byte
+
+[20/93] Processing 2024-04 - XLSX: 660be97d1139a
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1856 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1856 transactions
+  Duplicates: 0
+
+[21/93] Processing 2024-04 - XLSX: 660e6066b1dab
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 3946 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 3946 transactions
+  Duplicates: 0
+
+[22/93] Processing 2024-05 - CSV: 663315fb9ae34
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x9d in position 12: invalid start byte
+
+[23/93] Processing 2024-05 - CSV: 66338301a1ce3
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xa2 in position 12: invalid start byte
+
+[24/93] Processing 2024-05 - XLSX: 6639e91a28ee4
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 871 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 871 transactions
+  Duplicates: 0
+
+[25/93] Processing 2024-05 - XLSX: 663a1921d7189
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 5841 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 5841 transactions
+  Duplicates: 0
+
+[26/93] Processing 2024-06 - CSV: 665b059350b68
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xc1 in position 12: invalid start byte
+
+[27/93] Processing 2024-06 - CSV: 665b2b23c3938
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xbb in position 12: invalid start byte
+
+[28/93] Processing 2024-06 - XLSX: 665ef49b405ed
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1583 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1583 transactions
+  Duplicates: 0
+
+[29/93] Processing 2024-06 - XLSX: 665f0c8a236e3
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 8318 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 8318 transactions
+  Duplicates: 0
+
+[30/93] Processing 2024-07 - XLSX: 668243294a285
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 8684 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 8684 transactions
+  Duplicates: 0
+
+[31/93] Processing 2024-07 - CSV: 6682561f80677
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+
+[32/93] Processing 2024-07 - CSV: 6682688e23e28
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+
+[33/93] Processing 2024-07 - XLSX: 6682c177ee868
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1018 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1018 transactions
+  Duplicates: 0
+
+[34/93] Processing 2024-08 - CSV: 66ab287202d00
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xd4 in position 10: invalid continuation byte
+
+[35/93] Processing 2024-08 - CSV: 66ab30c881b9c
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[36/93] Processing 2024-08 - XLSX: 66ab3d92c1ff0
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 2216 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 2216 transactions
+  Duplicates: 0
+
+[37/93] Processing 2024-08 - XLSX: 66ab496932980
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 2960 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 2960 transactions
+  Duplicates: 0
+
+[38/93] Processing 2024-09 - CSV: 66d56fbf8821f
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[39/93] Processing 2024-09 - CSV: 66d5722bcea4e
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x88 in position 10: invalid start byte
+
+[40/93] Processing 2024-09 - XLSX: 66d5b6488d178
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 12087 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 12087 transactions
+  Duplicates: 0
+
+[41/93] Processing 2024-09 - XLSX: 66d5e28843072
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 3737 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 3737 transactions
+  Duplicates: 0
+
+[42/93] Processing 2024-10 - CSV: 66fb7597129e4
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x9c in position 10: invalid start byte
+
+[43/93] Processing 2024-10 - XLSX: 66fb94dcafb96
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1294 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1294 transactions
+  Duplicates: 0
+
+[44/93] Processing 2024-10 - CSV: 66fbaad28122f
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[45/93] Processing 2024-10 - XLSX: 66fbf84fb5453
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 66 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 66 transactions
+  Duplicates: 0
+
+[46/93] Processing 2024-11 - CSV: 67247cd10446a
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[47/93] Processing 2024-11 - CSV: 672494aaacff6
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[48/93] Processing 2024-11 - XLSX: 6729b852df93f
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 417 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 417 transactions
+  Duplicates: 0
+
+[49/93] Processing 2024-11 - XLSX: 672a012540926
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 523 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 523 transactions
+  Duplicates: 0
+
+[50/93] Processing 2024-12 - CSV: 674c6a83149e3
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xa7 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/674c6ebbf2426.csv: 'utf-8' codec can't decode byte 0x89 in position 11: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67764d183da0b.csv: 'utf-8' codec can't decode byte 0xd6 in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67768fd5b1ec2.csv: 'utf-8' codec can't decode bytes in position 10-11: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/679de0de23aee.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/679df0e7c3f99.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67c551d5495b2.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67c55841b46f4.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67eb81609053e.csv: 'utf-8' codec can't decode byte 0xd1 in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/67eb83b28f5f7.csv: 'utf-8' codec can't decode byte 0x81 in position 12: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/68130f7550c19.csv: 'utf-8' codec can't decode byte 0xb3 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/681313fd9e5e8.csv: 'utf-8' codec can't decode byte 0xe7 in position 10: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/683d52936180f.csv: 'utf-8' codec can't decode byte 0xc2 in position 12: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/683d61408007c.csv: 'utf-8' codec can't decode byte 0xa9 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/68639805a5be1.csv: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/6863a6d31a7e6.csv: 'utf-8' codec can't decode byte 0x99 in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/688c6732ad203.csv: 'utf-8' codec can't decode byte 0x8a in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/688c6c8865ce8.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[51/93] Processing 2024-12 - CSV: 674c6ebbf2426
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x89 in position 11: invalid start byte
+
+[52/93] Processing 2024-12 - XLSX: 674d664b7aaaf
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 3438 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 3438 transactions
+  Duplicates: 0
+
+[53/93] Processing 2024-12 - XLSX: 674da8415e7cf
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 2631 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 2631 transactions
+  Duplicates: 0
+
+[54/93] Processing 2025-01 - CSV: 67764d183da0b
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xd6 in position 10: invalid continuation byte
+
+[55/93] Processing 2025-01 - CSV: 67768fd5b1ec2
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode bytes in position 10-11: invalid continuation byte
+
+[56/93] Processing 2025-01 - XLSX: 677bf11e991e7
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 3550 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 3550 transactions
+  Duplicates: 0
+
+[57/93] Processing 2025-01 - XLSX: 677cc990a44d0
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 78 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 78 transactions
+  Duplicates: 0
+
+[58/93] Processing 2025-02 - XLSX: 679d7badbc313
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 5967 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 5967 transactions
+  Duplicates: 0
+
+[59/93] Processing 2025-02 - CSV: 679de0de23aee
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[60/93] Processing 2025-02 - CSV: 679df0e7c3f99
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[61/93] Processing 2025-02 - XLSX: 679e346a28a3d
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 6008 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 6008 transactions
+  Duplicates: 0
+
+[62/93] Processing 2025-03 - XLSX: 67c2bb090b8e5
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1932 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1932 transactions
+  Duplicates: 0
+
+[63/93] Processing 2025-03 - CSV: 67c551d5495b2
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[64/93] Processing 2025-03 - CSV: 67c55841b46f4
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[65/93] Processing 2025-03 - XLSX: 67c94a0796db7
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 8204 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 8204 transactions
+  Duplicates: 0
+
+[66/93] Processing 2025-04 - CSV: 67eb81609053e
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xd1 in position 10: invalid continuation byte
+
+[67/93] Processing 2025-04 - CSV: 67eb83b28f5f7
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x81 in position 12: invalid start byte
+
+[68/93] Processing 2025-04 - XLSX: 67ee510c96473
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 2583 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 2583 transactions
+  Duplicates: 0
+
+[69/93] Processing 2025-04 - XLSX: 67f63d6ccf1d2
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1990 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1990 transactions
+  Duplicates: 0
+
+[70/93] Processing 2025-05 - CSV: 68130f7550c19
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xb3 in position 10: invalid start byte
+
+[71/93] Processing 2025-05 - CSV: 681313fd9e5e8
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xe7 in position 10: invalid continuation byte
+
+[72/93] Processing 2025-05 - XLSX: 681475d42984a
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 5020 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 5020 transactions
+  Duplicates: 0
+
+[73/93] Processing 2025-05 - XLSX: 6815f035bcd2a
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 2828 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 2828 transactions
+  Duplicates: 0
+
+[74/93] Processing 2025-06 - CSV: 683d52936180f
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xc2 in position 12: invalid continuation byte
+
+[75/93] Processing 2025-06 - CSV: 683d61408007c
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xa9 in position 10: invalid start byte
+
+[76/93] Processing 2025-06 - XLSX: 684008c412cf6
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1635 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 1635 transactions
+  Duplicates: 0
+
+[77/93] Processing 2025-06 - XLSX: 684010c4193d5
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 3500 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 3500 transactions
+  Duplicates: 0
+
+[78/93] Processing 2025-07 - CSV: 68639805a5be1
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+
+[79/93] Processing 2025-07 - XLSX: 68639937f2428
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 585 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 585 transactions
+  Duplicates: 0
+
+[80/93] Processing 2025-07 - CSV: 6863a6d31a7e6
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x99 in position 10: invalid start byte
+
+[81/93] Processing 2025-07 - XLSX: 6863b346144ea
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 4239 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 4239 transactions
+  Duplicates: 0
+
+[82/93] Processing 2025-08 - CSV: 688c6732ad203
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x8a in position 10: invalid start byte
+
+[83/93] Processing 2025-08 - CSV: 688c6c8865ce8
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[84/93] Processing 2025-08 - XLSX: 688c7bf539835
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/68b53484e2b54.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/68b5403020362.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/68dcbc97ad59f.csv: 'utf-8' codec can't decode byte 0x9d in position 10: invalid start byte
+Error parsing UMTN file /home/ebran/Developer/projects/airtel_fraud_detection/backend/docs/data/UMTN/extracted/68dcda475daad.csv: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 15211 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 15211 transactions
+  Duplicates: 0
+
+[85/93] Processing 2025-08 - XLSX: 688c846e2c646
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 8773 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 8773 transactions
+  Duplicates: 0
+
+[86/93] Processing 2025-09 - CSV: 68b53484e2b54
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[87/93] Processing 2025-09 - CSV: 68b5403020362
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[88/93] Processing 2025-09 - XLSX: 68b6a8d69dadd
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1425 transactions
+  Balance Match: Failed
+  Verification: FAIL
+  Processed: 1425 transactions
+  Duplicates: 0
+
+[89/93] Processing 2025-09 - XLSX: 68b8323d4f39f
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 2023 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 2023 transactions
+  Duplicates: 0
+
+[90/93] Processing 2025-10 - CSV: 68dcbc97ad59f
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x9d in position 10: invalid start byte
+
+[91/93] Processing 2025-10 - CSV: 68dcda475daad
+  ----------------------------------------------------------------------------
+  ✗ Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+[92/93] Processing 2025-10 - XLSX: 68de879e0c505
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 1768 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 1768 transactions
+  Duplicates: 0
+
+[93/93] Processing 2025-10 - XLSX: 68dfc2c5649dc
+  ----------------------------------------------------------------------------
+  Columns: 17 fields
+  ✓ Imported 225 transactions
+  Balance Match: Success
+  Verification: PASS
+  Processed: 225 transactions
+  Duplicates: 0
+
+================================================================================
+SUMMARY REPORT
+================================================================================
+
+Total Samples: 93
+  ✓ Passed: 30 (32.3%)
+  ✗ Failed: 15 (16.1%)
+  ⚠ Errors: 48 (51.6%)
+
+By File Type:
+  XLSX: 30/45 passed
+  CSV: 0/48 passed
+
+By Month:
+  2023-10: 0/1 passed
+  2023-11: 1/3 passed
+  2023-12: 0/3 passed
+  2024-01: 1/4 passed
+  2024-02: 0/2 passed
+  2024-03: 2/4 passed
+  2024-04: 1/4 passed
+  2024-05: 1/4 passed
+  2024-06: 1/4 passed
+  2024-07: 2/4 passed
+  2024-08: 2/4 passed
+  2024-09: 2/4 passed
+  2024-10: 2/4 passed
+  2024-11: 1/4 passed
+  2024-12: 1/4 passed
+  2025-01: 2/4 passed
+  2025-02: 1/4 passed
+  2025-03: 2/4 passed
+  2025-04: 2/4 passed
+  2025-05: 1/4 passed
+  2025-06: 1/4 passed
+  2025-07: 0/4 passed
+  2025-08: 1/4 passed
+  2025-09: 1/4 passed
+  2025-10: 2/4 passed
+
+================================================================================
+FORMAT VARIATIONS
+================================================================================
+
+✓ All files have identical column structure!
+  Columns: acc_number,amount,commission_amount,commission_balance,commission_receiving_no,description,fee,float_balance,from_acc,run_id,status,tax,to_acc,txn_date,txn_direction,txn_id,txn_type
+
+================================================================================
+FAILED CASES
+================================================================================
+
+6540bd9a4035d (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xc7 in position 10: invalid continuation byte
+
+654221137bfe6 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xc9 in position 10: invalid continuation byte
+
+65424e13ee9d3 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x80 in position 11: invalid start byte
+
+657dd50270b2f (XLSX):
+  Status: FAIL
+
+65805b3eb5340 (XLSX):
+  Status: FAIL
+
+65843f753694f (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x84 in position 11: invalid start byte
+
+659ebab6d6c64 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+65a5246d9e56a (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xb2 in position 10: invalid start byte
+
+65aa8fa085892 (XLSX):
+  Status: FAIL
+
+65c1e2a8bcfe6 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+65c36d37da33e (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+65e6eda76354e (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xf7 in position 10: invalid start byte
+
+65e81d5bcaafb (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+660bb89400370 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xcf in position 10: invalid continuation byte
+
+660bc18fc3d9a (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x8b in position 11: invalid start byte
+
+660e6066b1dab (XLSX):
+  Status: FAIL
+
+663315fb9ae34 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x9d in position 12: invalid start byte
+
+66338301a1ce3 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xa2 in position 12: invalid start byte
+
+663a1921d7189 (XLSX):
+  Status: FAIL
+
+665b059350b68 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xc1 in position 12: invalid start byte
+
+665b2b23c3938 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xbb in position 12: invalid start byte
+
+665f0c8a236e3 (XLSX):
+  Status: FAIL
+
+6682561f80677 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+
+6682688e23e28 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+
+66ab287202d00 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xd4 in position 10: invalid continuation byte
+
+66ab30c881b9c (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+66d56fbf8821f (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+66d5722bcea4e (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x88 in position 10: invalid start byte
+
+66fb7597129e4 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x9c in position 10: invalid start byte
+
+66fbaad28122f (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+67247cd10446a (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+672494aaacff6 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+672a012540926 (XLSX):
+  Status: FAIL
+
+674c6a83149e3 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xa7 in position 10: invalid start byte
+
+674c6ebbf2426 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x89 in position 11: invalid start byte
+
+674d664b7aaaf (XLSX):
+  Status: FAIL
+
+67764d183da0b (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xd6 in position 10: invalid continuation byte
+
+67768fd5b1ec2 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode bytes in position 10-11: invalid continuation byte
+
+679d7badbc313 (XLSX):
+  Status: FAIL
+
+679de0de23aee (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+679df0e7c3f99 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+67c551d5495b2 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+67c55841b46f4 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+67eb81609053e (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xd1 in position 10: invalid continuation byte
+
+67eb83b28f5f7 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x81 in position 12: invalid start byte
+
+68130f7550c19 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xb3 in position 10: invalid start byte
+
+681313fd9e5e8 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xe7 in position 10: invalid continuation byte
+
+681475d42984a (XLSX):
+  Status: FAIL
+
+683d52936180f (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xc2 in position 12: invalid continuation byte
+
+683d61408007c (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xa9 in position 10: invalid start byte
+
+684008c412cf6 (XLSX):
+  Status: FAIL
+
+68639805a5be1 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0xe1 in position 12: invalid continuation byte
+
+68639937f2428 (XLSX):
+  Status: FAIL
+
+6863a6d31a7e6 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x99 in position 10: invalid start byte
+
+6863b346144ea (XLSX):
+  Status: FAIL
+
+688c6732ad203 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x8a in position 10: invalid start byte
+
+688c6c8865ce8 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+688c846e2c646 (XLSX):
+  Status: FAIL
+
+68b53484e2b54 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+68b5403020362 (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+68b6a8d69dadd (XLSX):
+  Status: FAIL
+
+68dcbc97ad59f (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x9d in position 10: invalid start byte
+
+68dcda475daad (CSV):
+  Status: ERROR
+  Error: 'utf-8' codec can't decode byte 0x98 in position 50: invalid start byte
+
+================================================================================
+
