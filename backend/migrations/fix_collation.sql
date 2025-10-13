@@ -48,6 +48,8 @@ SELECT
     s.verification_reason,
     s.balance_match,
     s.duplicate_count,
+    s.missing_days_detected,
+    s.gap_related_balance_changes,
     s.created_at AS processed_at,
     s.balance_diff_changes,
     s.balance_diff_change_ratio,

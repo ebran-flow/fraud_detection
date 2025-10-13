@@ -395,15 +395,68 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     return df
 
 
+def detect_gap_related_balance_changes(df: pd.DataFrame, gap_threshold_days: float = 1.0) -> tuple:
+    """
+    Detect balance_diff changes that were caused by missing transaction days.
+
+    Identifies cases where:
+    1. balance_diff_change_count increases (balance_diff changed)
+    2. The change was preceded by a date gap >gap_threshold_days
+
+    Args:
+        df: DataFrame with transactions (must have 'txn_date' and 'balance_diff_change_count')
+        gap_threshold_days: Threshold in days to consider a gap significant (default: 1.0)
+
+    Returns:
+        Tuple of (missing_days_detected: bool, gap_related_balance_changes: int)
+    """
+    if len(df) < 2:
+        return False, 0
+
+    # Sort by date
+    df_sorted = df.sort_values('txn_date').copy().reset_index(drop=True)
+
+    # Calculate time difference between consecutive transactions
+    df_sorted['time_diff_days'] = df_sorted['txn_date'].diff().dt.total_seconds() / (24 * 3600)
+
+    # Find where balance_diff_change_count increases (balance_diff changed)
+    df_sorted['balance_diff_changed'] = (
+        df_sorted['balance_diff_change_count'] >
+        df_sorted['balance_diff_change_count'].shift(1).fillna(0)
+    )
+
+    # Count balance_diff changes that were preceded by a date gap
+    balance_changes_with_gaps = df_sorted[
+        (df_sorted['balance_diff_changed'] == True) &
+        (df_sorted['time_diff_days'] > gap_threshold_days)
+    ]
+
+    gap_related_balance_changes = len(balance_changes_with_gaps)
+    missing_days_detected = gap_related_balance_changes > 0
+
+    if missing_days_detected:
+        logger.info(
+            f"Detected {gap_related_balance_changes} balance_diff changes "
+            f"caused by date gaps (>{gap_threshold_days} days)"
+        )
+
+    return missing_days_detected, gap_related_balance_changes
+
+
 def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider_code: str, balance_field: str) -> Dict[str, Any]:
     """
     Generate summary record from processed data
     Supports different balance fields per provider
+    Detects missing transaction days
     """
     # Calculate totals using centralized utility
     credits, debits = calculate_total_credits_debits(df, metadata.pdf_format, provider_code)
     fees = float(df['fee'].sum())
     charges = 0.0  # Can be calculated separately if needed
+
+    # Detect balance_diff changes caused by missing transaction days
+    # Only counts gaps that actually affected balance calculation
+    missing_days_detected, gap_related_balance_changes = detect_gap_related_balance_changes(df, gap_threshold_days=1.0)
 
     # Get calculated closing balance
     calculated_closing_balance = float(df.iloc[-1]['calculated_running_balance']) if len(df) > 0 else 0.0
@@ -449,6 +502,8 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
         'first_balance': first_balance,
         'last_balance': last_balance,
         'duplicate_count': duplicate_count,
+        'missing_days_detected': missing_days_detected,
+        'gap_related_balance_changes': gap_related_balance_changes,
         'balance_match': balance_match,
         'verification_status': verification_status,
         'verification_reason': verification_reason,

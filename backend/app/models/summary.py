@@ -2,7 +2,7 @@
 Summary Model
 Provides final-level verification and balance summary (one row per run_id)
 """
-from sqlalchemy import Column, BigInteger, String, Integer, Numeric, DateTime, Text, Float, TIMESTAMP, Index, Enum
+from sqlalchemy import Column, BigInteger, String, Integer, Numeric, DateTime, Text, Float, TIMESTAMP, Index, Enum, Boolean
 from sqlalchemy.sql import func
 from .base import Base
 
@@ -22,6 +22,8 @@ class Summary(Base):
     first_balance = Column(Numeric(18, 2))
     last_balance = Column(Numeric(18, 2))
     duplicate_count = Column(Integer, default=0)
+    missing_days_detected = Column(Boolean, default=False)
+    gap_related_balance_changes = Column(Integer, default=0)
     balance_match = Column(Enum('Success', 'Failed', name='balance_match_enum'))
     verification_status = Column(String(64))
     verification_reason = Column(Text)
@@ -60,6 +62,8 @@ class Summary(Base):
             'first_balance': float(self.first_balance) if self.first_balance else None,
             'last_balance': float(self.last_balance) if self.last_balance else None,
             'duplicate_count': self.duplicate_count,
+            'missing_days_detected': self.missing_days_detected,
+            'gap_related_balance_changes': self.gap_related_balance_changes,
             'balance_match': self.balance_match,
             'verification_status': self.verification_status,
             'verification_reason': self.verification_reason,

@@ -632,6 +632,7 @@
                             <th>Import Error</th>
                             <th>Duplicates</th>
                             <th>Balance Diff Changes</th>
+                            <th>Gap-Related</th>
                             <th>Balance Diff Ratio</th>
                             <th>Calculated Balance</th>
                             <th>Statement Balance</th>
@@ -911,6 +912,7 @@
                             <td>${item.parsing_error || '-'}</td>
                             <td>${item.duplicate_count !== null && item.duplicate_count !== undefined ? item.duplicate_count : '-'}</td>
                             <td>${item.balance_diff_changes !== null && item.balance_diff_changes !== undefined ? item.balance_diff_changes : '-'}</td>
+                            <td>${item.gap_related_balance_changes !== null && item.gap_related_balance_changes !== undefined ? `<span class="badge bg-warning">${item.gap_related_balance_changes}</span>` : '-'}</td>
                             <td>${item.balance_diff_change_ratio !== null && item.balance_diff_change_ratio !== undefined ? item.balance_diff_change_ratio.toFixed(4) : '-'}</td>
                             <td>${item.calculated_closing_balance !== null && item.calculated_closing_balance !== undefined ? formatNumber(item.calculated_closing_balance) : '-'}</td>
                             <td>${item.stmt_closing_balance !== null && item.stmt_closing_balance !== undefined ? formatNumber(item.stmt_closing_balance) : '-'}</td>

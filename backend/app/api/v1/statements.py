@@ -227,6 +227,8 @@ async def list_unified_statements(
                 verification_reason,
                 balance_match,
                 duplicate_count,
+                missing_days_detected,
+                gap_related_balance_changes,
                 processed_at,
                 balance_diff_changes,
                 balance_diff_change_ratio,
@@ -270,16 +272,18 @@ async def list_unified_statements(
                 'verification_reason': row[17],
                 'balance_match': row[18],
                 'duplicate_count': row[19],
-                'processed_at': row[20].isoformat() if row[20] else None,
-                'balance_diff_changes': row[21],
-                'balance_diff_change_ratio': float(row[22]) if row[22] else None,
-                'calculated_closing_balance': float(row[23]) if row[23] else None,
-                'stmt_closing_balance': float(row[24]) if row[24] else None,
-                'meta_title': row[25],
-                'meta_author': row[26],
-                'meta_producer': row[27],
-                'meta_created_at': row[28].isoformat() if row[28] else None,
-                'meta_modified_at': row[29].isoformat() if row[29] else None
+                'missing_days_detected': row[20],
+                'gap_related_balance_changes': row[21],
+                'processed_at': row[22].isoformat() if row[22] else None,
+                'balance_diff_changes': row[23],
+                'balance_diff_change_ratio': float(row[24]) if row[24] else None,
+                'calculated_closing_balance': float(row[25]) if row[25] else None,
+                'stmt_closing_balance': float(row[26]) if row[26] else None,
+                'meta_title': row[27],
+                'meta_author': row[28],
+                'meta_producer': row[29],
+                'meta_created_at': row[30].isoformat() if row[30] else None,
+                'meta_modified_at': row[31].isoformat() if row[31] else None
             })
 
         total_pages = math.ceil(total / page_size) if total > 0 else 0
