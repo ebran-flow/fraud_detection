@@ -4,6 +4,7 @@ Cross-Platform MySQL Backup Script
 Works with MySQL in Docker or standalone
 Compatible with MySQL 5.7, 8.0+
 Platform: Windows, Linux, Mac
+Reads credentials from .env file
 """
 import os
 import subprocess
@@ -11,15 +12,24 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import shutil
+from dotenv import load_dotenv
 
-# Configuration
+# Load environment variables from .env file
+env_path = Path(__file__).parent / '.env'
+if not env_path.exists():
+    print("Error: .env file not found")
+    sys.exit(1)
+
+load_dotenv(env_path)
+
+# Configuration (read from .env with defaults)
 CONFIG = {
-    'docker_container': 'mysql-fraud-detection',  # Change to your container name
-    'db_host': 'localhost',
-    'db_port': '3307',
-    'db_user': 'root',
-    'db_password': 'root',
-    'db_name': 'airtel',
+    'docker_container': os.getenv('DOCKER_CONTAINER', 'mysql-fraud-detection'),
+    'db_host': os.getenv('DB_HOST', 'localhost'),
+    'db_port': os.getenv('DB_PORT', '3307'),
+    'db_user': os.getenv('DB_USER', 'root'),
+    'db_password': os.getenv('DB_PASSWORD', 'root'),
+    'db_name': os.getenv('DB_NAME', 'fraud_detection'),
     'backup_dir': './backups',
 }
 
@@ -148,7 +158,7 @@ def list_recent_backups(backup_dir, limit=5):
         return []
 
     backups = sorted(
-        backup_path.glob('airtel_backup_*.sql*'),
+        backup_path.glob('*_backup_*.sql*'),
         key=lambda x: x.stat().st_mtime,
         reverse=True
     )[:limit]
@@ -174,7 +184,7 @@ def main():
 
     # Create backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = backup_dir / f"airtel_backup_{timestamp}.sql"
+    backup_file = backup_dir / f"{config['db_name']}_backup_{timestamp}.sql"
 
     print_colored(f"Database: {config['db_name']}", Colors.YELLOW)
     print_colored(f"Backup File: {backup_file}", Colors.YELLOW)

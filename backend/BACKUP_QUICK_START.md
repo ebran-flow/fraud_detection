@@ -25,33 +25,39 @@ python3 backup_mysql.py
 ✅ **No import errors**: Removes version-specific SQL
 ✅ **Docker-aware**: Auto-detects Docker or native MySQL
 
-## Quick Configuration
+## Configuration
 
-Edit the script you're using and change these values:
+**No configuration needed!** Scripts automatically read from `.env` file:
 
 ```bash
-DOCKER_CONTAINER="mysql-fraud-detection"  # Your container name
-DB_PORT="3307"                             # Your MySQL port
-DB_NAME="airtel"                           # Your database name
+# .env file
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=root
+DB_PASSWORD=password
+DB_NAME=fraud_detection
+DOCKER_CONTAINER=mysql-fraud-detection  # Optional
 ```
+
+All credentials are securely stored in `.env` (not committed to git).
 
 ## Output
 
-Backups saved to: `./backups/airtel_backup_YYYYMMDD_HHMMSS.sql`
+Backups saved to: `./backups/{DB_NAME}_backup_YYYYMMDD_HHMMSS.sql`
 
 Example:
 ```
-backups/airtel_backup_20251013_153012.sql
+backups/fraud_detection_backup_20251013_153012.sql
 ```
 
 ## Restore Backup
 
 ```bash
 # Via Docker
-docker exec -i mysql-fraud-detection mysql -u root -proot airtel < backups/airtel_backup_20251013_153012.sql
+docker exec -i mysql-fraud-detection mysql -u root -ppassword fraud_detection < backups/fraud_detection_backup_20251013_153012.sql
 
 # Direct connection
-mysql -h localhost -P 3307 -u root -proot airtel < backups/airtel_backup_20251013_153012.sql
+mysql -h 127.0.0.1 -P 3307 -u root -ppassword fraud_detection < backups/fraud_detection_backup_20251013_153012.sql
 ```
 
 ## Key Compatibility Flags

@@ -37,29 +37,29 @@ The scripts use these mysqldump flags to ensure compatibility:
 
 ## Configuration
 
-Edit the configuration section in each script:
+**No manual configuration needed!** All scripts automatically read from `.env` file.
+
+Your `.env` file should contain:
 
 ```bash
-# For bash/batch scripts
-DOCKER_CONTAINER="mysql-fraud-detection"
-DB_HOST="localhost"
-DB_PORT="3307"
-DB_USER="root"
-DB_PASSWORD="root"
-DB_NAME="airtel"
+# Database Configuration (.env file)
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=root
+DB_PASSWORD=password
+DB_NAME=fraud_detection
+
+# Optional: Docker container name (defaults to mysql-fraud-detection)
+DOCKER_CONTAINER=mysql-fraud-detection
 ```
 
-```python
-# For Python script
-CONFIG = {
-    'docker_container': 'mysql-fraud-detection',
-    'db_host': 'localhost',
-    'db_port': '3307',
-    'db_user': 'root',
-    'db_password': 'root',
-    'db_name': 'airtel',
-    'backup_dir': './backups',
-}
+**Security Note:** `.env` file is already in `.gitignore` - credentials are never committed to git.
+
+### Custom Settings
+
+To override default Docker container name, add to `.env`:
+```bash
+DOCKER_CONTAINER=your-container-name
 ```
 
 ## Usage
@@ -102,13 +102,13 @@ The scripts automatically detect your setup:
 
 ## Backup Location
 
-Backups are saved to `./backups/` directory:
+Backups are saved to `./backups/` directory with format `{DB_NAME}_backup_YYYYMMDD_HHMMSS.sql`:
 
 ```
 backups/
-├── airtel_backup_20251013_141530.sql
-├── airtel_backup_20251013_150245.sql
-└── airtel_backup_20251013_153012.sql.gz
+├── fraud_detection_backup_20251013_141530.sql
+├── fraud_detection_backup_20251013_150245.sql
+└── fraud_detection_backup_20251013_153012.sql.gz
 ```
 
 ## Compression
@@ -131,27 +131,27 @@ All scripts support optional gzip compression:
 
 ```bash
 # Via Docker
-docker exec -i mysql-fraud-detection mysql -u root -proot airtel < backups/airtel_backup_20251013_141530.sql
+docker exec -i mysql-fraud-detection mysql -u root -ppassword fraud_detection < backups/fraud_detection_backup_20251013_141530.sql
 
 # Direct connection
-mysql -h localhost -P 3307 -u root -proot airtel < backups/airtel_backup_20251013_141530.sql
+mysql -h 127.0.0.1 -P 3307 -u root -ppassword fraud_detection < backups/fraud_detection_backup_20251013_141530.sql
 ```
 
 ### From compressed backup:
 
 ```bash
 # Via Docker
-gunzip < backups/airtel_backup_20251013_141530.sql.gz | docker exec -i mysql-fraud-detection mysql -u root -proot airtel
+gunzip < backups/fraud_detection_backup_20251013_141530.sql.gz | docker exec -i mysql-fraud-detection mysql -u root -ppassword fraud_detection
 
 # Direct connection
-gunzip < backups/airtel_backup_20251013_141530.sql.gz | mysql -h localhost -P 3307 -u root -proot airtel
+gunzip < backups/fraud_detection_backup_20251013_141530.sql.gz | mysql -h 127.0.0.1 -P 3307 -u root -ppassword fraud_detection
 ```
 
 ### Windows (with 7-Zip):
 
 ```cmd
-7z x backups\airtel_backup_20251013_141530.sql.gz
-mysql -h localhost -P 3307 -u root -proot airtel < backups\airtel_backup_20251013_141530.sql
+7z x backups\fraud_detection_backup_20251013_141530.sql.gz
+mysql -h 127.0.0.1 -P 3307 -u root -ppassword fraud_detection < backups\fraud_detection_backup_20251013_141530.sql
 ```
 
 ## Why These Flags Matter
@@ -225,28 +225,35 @@ crontab -e
 
 ## File Sizes
 
-Typical backup sizes for airtel database:
+Typical backup sizes for fraud_detection database:
 
-- **Uncompressed**: ~50-200 MB
+- **Uncompressed**: ~50-200 MB (depends on data volume)
 - **Compressed (gzip)**: ~10-40 MB
 - **Compression ratio**: 5:1 to 10:1
 
 ## Security Notes
 
-⚠️ **Password in Scripts**: These scripts contain plain-text passwords. Protect them:
+✅ **Credentials in .env**: Passwords are stored in `.env` file which is:
+- Already in `.gitignore` (never committed to git)
+- Separate from code (can be secured independently)
+- Easy to rotate without changing scripts
+
+**Recommended Permissions:**
 
 ```bash
-# Linux/Mac: Restrict permissions
-chmod 700 backup_mysql.sh
-chmod 600 backup_mysql.py
+# Linux/Mac: Restrict .env and script permissions
+chmod 600 .env
+chmod 700 backup_mysql.sh backup_mysql.py
 
-# Windows: Set file permissions to "Only Me"
+# Windows: Right-click .env → Properties → Security → Advanced
+# Remove all users except yourself
 ```
 
-For production, use:
-- MySQL configuration file (`~/.my.cnf`)
-- Environment variables
-- Secret management tools
+**Production Best Practices:**
+- Use MySQL configuration file (`~/.my.cnf`) for credentials
+- Store `.env` in secure location outside web root
+- Use secret management tools (Vault, AWS Secrets Manager)
+- Rotate passwords regularly
 
 ## Support
 

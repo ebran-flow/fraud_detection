@@ -3,20 +3,29 @@
 # MySQL Backup Script (Cross-Platform Compatible)
 # Works with MySQL running in Docker on Windows/Linux/Mac
 # Cross MySQL version compatible (5.7, 8.0+)
+# Reads credentials from .env file
 # ============================================================
 
 set -e  # Exit on error
 
-# Configuration
-DOCKER_CONTAINER="mysql-fraud-detection"  # Change to your container name
-DB_HOST="localhost"
-DB_PORT="3307"
-DB_USER="root"
-DB_PASSWORD="root"
-DB_NAME="airtel"
+# Load environment variables from .env file
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+else
+    echo "Error: .env file not found"
+    exit 1
+fi
+
+# Configuration (with defaults from .env)
+DOCKER_CONTAINER="${DOCKER_CONTAINER:-mysql-fraud-detection}"
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-3307}"
+DB_USER="${DB_USER:-root}"
+DB_PASSWORD="${DB_PASSWORD:-root}"
+DB_NAME="${DB_NAME:-fraud_detection}"
 BACKUP_DIR="./backups"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="${BACKUP_DIR}/airtel_backup_${TIMESTAMP}.sql"
+BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_backup_${TIMESTAMP}.sql"
 
 # Colors for output
 GREEN='\033[0;32m'

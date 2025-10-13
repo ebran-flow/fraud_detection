@@ -2,23 +2,41 @@
 REM ============================================================
 REM MySQL Backup Script for Windows (Docker Compatible)
 REM Cross MySQL version compatible (5.7, 8.0+)
+REM Reads credentials from .env file
 REM ============================================================
 
 setlocal enabledelayedexpansion
 
-REM Configuration
-set DOCKER_CONTAINER=mysql-fraud-detection
-set DB_HOST=localhost
-set DB_PORT=3307
-set DB_USER=root
-set DB_PASSWORD=root
-set DB_NAME=airtel
+REM Load environment variables from .env file
+if not exist .env (
+    echo Error: .env file not found
+    pause
+    exit /b 1
+)
+
+REM Parse .env file (skip comments and empty lines)
+for /f "usebackq tokens=1,* delims==" %%a in (.env) do (
+    set line=%%a
+    if not "!line:~0,1!"=="#" (
+        if not "%%a"=="" (
+            set %%a=%%b
+        )
+    )
+)
+
+REM Configuration (with defaults from .env)
+if not defined DOCKER_CONTAINER set DOCKER_CONTAINER=mysql-fraud-detection
+if not defined DB_HOST set DB_HOST=localhost
+if not defined DB_PORT set DB_PORT=3307
+if not defined DB_USER set DB_USER=root
+if not defined DB_PASSWORD set DB_PASSWORD=root
+if not defined DB_NAME set DB_NAME=fraud_detection
 set BACKUP_DIR=backups
 
 REM Create timestamp (YYYYMMDD_HHMMSS)
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
 set TIMESTAMP=%datetime:~0,8%_%datetime:~8,6%
-set BACKUP_FILE=%BACKUP_DIR%\airtel_backup_%TIMESTAMP%.sql
+set BACKUP_FILE=%BACKUP_DIR%\%DB_NAME%_backup_%TIMESTAMP%.sql
 
 echo ============================================================
 echo MySQL Backup Script - Windows Docker Compatible

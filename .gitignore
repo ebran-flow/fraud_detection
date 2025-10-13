@@ -72,3 +72,4 @@ backups
 oauth_credentials.json
 token.pickle
 *.sql
+backend/docs/data/UMTN/*
