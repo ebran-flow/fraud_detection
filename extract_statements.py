@@ -3,10 +3,12 @@
 Extract Compressed Statements Script
 
 Extracts first file from each ZIP archive, detects format, and saves with proper extension.
+Supports both UATL (Airtel) and UMTN (MTN) providers.
 
 Usage:
-    python extract_statements.py              # Extract all files
-    python extract_statements.py --dry-run    # Preview without extracting
+    python extract_statements.py --provider UATL              # Extract UATL files
+    python extract_statements.py --provider UMTN              # Extract UMTN files
+    python extract_statements.py --provider UMTN --dry-run    # Preview UMTN without extracting
 """
 
 import zipfile
@@ -17,20 +19,12 @@ import magic
 import shutil
 from datetime import datetime
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('extract_statements.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Base paths
+BASE_DIR = Path("/home/ebran/Developer/projects/airtel_fraud_detection")
+BACKEND_DIR = BASE_DIR / "backend" / "docs" / "data"
 
-# Paths
-COMPRESSED_DIR = Path("/home/ebran/Developer/projects/airtel_fraud_detection/docs/data/UATL/compressed")
-EXTRACTED_DIR = Path("/home/ebran/Developer/projects/airtel_fraud_detection/docs/data/UATL/extracted")
+# Setup logger (will be configured in main())
+logger = logging.getLogger(__name__)
 
 
 def detect_file_type(file_path: Path) -> str:
@@ -105,25 +99,49 @@ def extract_file(zip_path: Path, extracted_dir: Path, dry_run: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(description='Extract compressed statement files')
+    parser.add_argument('--provider', type=str, required=True, choices=['UATL', 'UMTN'],
+                       help='Provider: UATL (Airtel) or UMTN (MTN)')
     parser.add_argument('--dry-run', action='store_true', help='Preview without extracting')
     args = parser.parse_args()
 
+    # Setup logging with provider-specific log file
+    log_file = f'extract_statements_{args.provider}.log'
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ],
+        force=True
+    )
+
+    # Set paths based on provider
+    compressed_dir = BACKEND_DIR / args.provider / "compressed"
+    extracted_dir = BACKEND_DIR / args.provider / "extracted"
+
     # Validate paths
-    if not COMPRESSED_DIR.exists():
-        logger.error(f"❌ Directory not found: {COMPRESSED_DIR}")
+    if not compressed_dir.exists():
+        logger.error(f"❌ Directory not found: {compressed_dir}")
         return 1
 
     if not args.dry_run:
-        EXTRACTED_DIR.mkdir(parents=True, exist_ok=True)
+        extracted_dir.mkdir(parents=True, exist_ok=True)
 
     # Start
     start_time = datetime.now()
     logger.info(f"\n{'='*70}")
-    logger.info(f"EXTRACT STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
+    logger.info(f"EXTRACT STATEMENTS - {args.provider} - {'DRY RUN' if args.dry_run else 'LIVE'}")
+    logger.info(f"{'='*70}")
+    logger.info(f"Source:      {compressed_dir}")
+    logger.info(f"Destination: {extracted_dir}")
     logger.info(f"{'='*70}\n")
 
     # Process all files
-    files = sorted(COMPRESSED_DIR.iterdir())
+    files = sorted(compressed_dir.iterdir())
     logger.info(f"Found {len(files)} files\n")
 
     success = 0
@@ -133,7 +151,7 @@ def main():
     for idx, file_path in enumerate(files, 1):
         if file_path.is_file():
             logger.info(f"[{idx}/{len(files)}] {file_path.name}")
-            result = extract_file(file_path, EXTRACTED_DIR, args.dry_run)
+            result = extract_file(file_path, extracted_dir, args.dry_run)
 
             if result:
                 if "Already extracted" in str(result):
