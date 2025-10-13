@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Parallel Processing for UATL Statements
+Parallel Processing for UATL and UMTN Statements
 
 Processes multiple statements in parallel using multiprocessing.
 Only handles upload phase (parse + save to raw_statements + metadata).
 
 Usage:
-    python process_parallel.py --workers 32              # 32 parallel workers
-    python process_parallel.py --workers 24 --dry-run    # Preview with 24 workers
-    python process_parallel.py --workers 16 --month 2025-10  # Specific month
+    python process_parallel.py --workers 32 --provider UMTN              # 32 parallel workers for UMTN
+    python process_parallel.py --workers 24 --provider UATL --dry-run    # Preview with 24 workers for UATL
+    python process_parallel.py --workers 16 --provider UMTN --month 2023-10  # Specific month
 """
 
 import sys
@@ -48,17 +48,16 @@ logger = logging.getLogger(__name__)
 # Paths (relative to backend folder)
 BACKEND_DIR = Path(__file__).parent
 MAPPER_CSV = BACKEND_DIR / "docs" / "data" / "statements" / "mapper.csv"
-EXTRACTED_DIR = BACKEND_DIR / "docs" / "data" / "UATL" / "extracted"
-PROVIDER_CODE = "UATL"
 
 
-def read_uatl_statements(mapper_csv: Path, target_month: str = None):
+def read_statements(mapper_csv: Path, provider_code: str, target_month: str = None):
     """
-    Read mapper.csv and filter UATL statements
+    Read mapper.csv and filter statements by provider
     Sorts by date (newest first)
 
     Args:
         mapper_csv: Path to mapper.csv
+        provider_code: Provider code to filter (UATL or UMTN)
         target_month: Optional filter for specific month (e.g., "2025-09")
     """
     statements = []
@@ -66,8 +65,8 @@ def read_uatl_statements(mapper_csv: Path, target_month: str = None):
     with open(mapper_csv, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Filter for UATL
-            if not (row['acc_prvdr_code'] == 'UATL' and row['lambda_status'] == 'score_calc_success'):
+            # Filter for provider and successful status
+            if not (row['acc_prvdr_code'] == provider_code and row['lambda_status'] == 'score_calc_success'):
                 continue
 
             # Optional month filter
@@ -93,7 +92,7 @@ def find_statement_file(run_id: str, extracted_dir: Path):
     return matches[0] if matches else None
 
 
-def process_single_statement(statement_info, existing_run_ids, dry_run=False):
+def process_single_statement(statement_info, existing_run_ids, provider_code, extracted_dir, dry_run=False):
     """
     Process a single statement (worker function)
     Returns: dict with status and details
@@ -110,7 +109,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
             }
 
         # Find file
-        file_path = find_statement_file(run_id, EXTRACTED_DIR)
+        file_path = find_statement_file(run_id, extracted_dir)
         if not file_path:
             return {
                 'status': 'not_found',
@@ -130,7 +129,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
 
         try:
             # Double-check in DB (in case another worker just added it)
-            if crud.check_run_id_exists(db, run_id, PROVIDER_CODE):
+            if crud.check_run_id_exists(db, run_id, provider_code):
                 return {
                     'status': 'skipped',
                     'run_id': run_id,
@@ -138,7 +137,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
                 }
 
             # Get parser
-            parser = get_parser(PROVIDER_CODE, str(file_path))
+            parser = get_parser(provider_code, str(file_path))
 
             # Parse file
             raw_statements, metadata = parser(str(file_path), run_id)
@@ -148,7 +147,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
 
             # Save to database
             metadata_obj = crud.create(db, Metadata, metadata)
-            crud.bulk_create_raw(db, PROVIDER_CODE, raw_statements)
+            crud.bulk_create_raw(db, provider_code, raw_statements)
             db.commit()
 
             return {
@@ -211,23 +210,30 @@ def log_progress(result, counter, total, start_time):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Parallel processing for UATL statements')
-    parser.add_argument('--workers', type=int, default=12, help='Number of parallel workers (default: 6, max: 12)')
+    parser = argparse.ArgumentParser(description='Parallel processing for UATL and UMTN statements')
+    parser.add_argument('--provider', type=str, required=True, choices=['UATL', 'UMTN'],
+                        help='Provider code (UATL or UMTN)')
+    parser.add_argument('--workers', type=int, default=12,
+                        help='Number of parallel workers (default: 12, max: 32)')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
-    parser.add_argument('--month', type=str, help='Filter by specific month (e.g., 2025-09)')
+    parser.add_argument('--month', type=str, help='Filter by specific month (e.g., 2025-09 or 2023-10)')
     args = parser.parse_args()
+
+    # Set paths based on provider
+    provider_code = args.provider
+    extracted_dir = BACKEND_DIR / "docs" / "data" / provider_code / "extracted"
 
     # Validate paths
     if not MAPPER_CSV.exists():
         logger.error(f"❌ Mapper CSV not found: {MAPPER_CSV}")
         return 1
 
-    if not EXTRACTED_DIR.exists():
-        logger.error(f"❌ Extracted directory not found: {EXTRACTED_DIR}")
+    if not extracted_dir.exists():
+        logger.error(f"❌ Extracted directory not found: {extracted_dir}")
         return 1
 
     # Validate workers (optimized for direct DB access)
-    max_workers = 12  # Safe limit for direct DB access
+    max_workers = 32  # Safe limit for direct DB access
     if args.workers > max_workers:
         logger.warning(f"⚠️  Requested {args.workers} workers, limiting to {max_workers}")
         args.workers = max_workers
@@ -236,20 +242,20 @@ def main():
     start_time = datetime.now()
     logger.info(f"\n{'='*70}")
     if args.month:
-        logger.info(f"PARALLEL PROCESS {args.month} UATL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
+        logger.info(f"PARALLEL PROCESS {args.month} {provider_code} STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
     else:
-        logger.info(f"PARALLEL PROCESS ALL UATL STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
+        logger.info(f"PARALLEL PROCESS ALL {provider_code} STATEMENTS - {'DRY RUN' if args.dry_run else 'LIVE'}")
     logger.info(f"Workers: {args.workers}")
     logger.info(f"{'='*70}\n")
 
     # Read mapper
     logger.info("Reading mapper.csv...")
-    statements = read_uatl_statements(MAPPER_CSV, target_month=args.month)
+    statements = read_statements(MAPPER_CSV, provider_code, target_month=args.month)
 
     if args.month:
-        logger.info(f"Found {len(statements)} statements from {args.month}\n")
+        logger.info(f"Found {len(statements)} {provider_code} statements from {args.month}\n")
     else:
-        logger.info(f"Found {len(statements)} UATL statements\n")
+        logger.info(f"Found {len(statements)} {provider_code} statements\n")
         if len(statements) > 0:
             logger.info(f"Date range: {statements[0]['created_date']} to {statements[-1]['created_date']}\n")
 
@@ -261,8 +267,8 @@ def main():
     logger.info("Pre-loading existing run_ids from database...")
     db = SessionLocal()
     try:
-        # Get all existing UATL run_ids
-        existing_run_ids = set(crud.get_all_run_ids(db, PROVIDER_CODE))
+        # Get all existing run_ids for this provider
+        existing_run_ids = set(crud.get_all_run_ids(db, provider_code))
         logger.info(f"Found {len(existing_run_ids)} existing run_ids in database\n")
     finally:
         db.close()
@@ -291,6 +297,8 @@ def main():
     worker_func = partial(
         process_single_statement,
         existing_run_ids=existing_run_ids,
+        provider_code=provider_code,
+        extracted_dir=extracted_dir,
         dry_run=args.dry_run
     )
 
@@ -304,7 +312,7 @@ def main():
     # Summary
     duration = datetime.now() - start_time
     logger.info(f"\n{'='*70}")
-    logger.info(f"SUMMARY")
+    logger.info(f"SUMMARY - {provider_code}")
     logger.info(f"{'='*70}")
     logger.info(f"Total statements: {len(statements)}")
     logger.info(f"Already uploaded:  {already_uploaded}")
@@ -315,7 +323,8 @@ def main():
     logger.info(f"❌ Errors:         {counter.get('error', 0)}")
     logger.info(f"{'='*70}")
     logger.info(f"Duration: {duration}")
-    logger.info(f"Average speed: {len(statements_to_process) / duration.total_seconds():.2f} statements/second")
+    if duration.total_seconds() > 0 and len(statements_to_process) > 0:
+        logger.info(f"Average speed: {len(statements_to_process) / duration.total_seconds():.2f} statements/second")
     logger.info(f"✅ Complete!\n")
 
     return 0
