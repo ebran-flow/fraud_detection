@@ -67,7 +67,7 @@ def read_uatl_statements(mapper_csv: Path, target_month: str = None):
         reader = csv.DictReader(f)
         for row in reader:
             # Filter for UATL
-            if row['acc_prvdr_code'] != 'UATL':
+            if not (row['acc_prvdr_code'] == 'UATL' and row['lambda_status'] == 'score_calc_success'):
                 continue
 
             # Optional month filter
