@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c0392b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Shield background -->
+  <path d="M32 4 L54 12 L54 28 Q54 44 32 58 Q10 44 10 28 L10 12 Z"
+        fill="url(#shieldGrad)"
+        stroke="#992d22"
+        stroke-width="1.5"/>
+
+  <!-- Alert symbol - exclamation mark -->
+  <g fill="#ffffff">
+    <!-- Exclamation bar -->
+    <rect x="29" y="18" width="6" height="20" rx="2"/>
+    <!-- Exclamation dot -->
+    <circle cx="32" cy="44" r="3.5"/>
+  </g>
+
+  <!-- Shield highlight for depth -->
+  <path d="M32 6 L52 13 L52 28 Q52 42 32 54"
+        fill="none"
+        stroke="rgba(255,255,255,0.2)"
+        stroke-width="2"
+        opacity="0.6"/>
+</svg>

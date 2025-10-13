@@ -4,7 +4,7 @@ Airtel Fraud Detection System
 """
 import logging
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,6 +74,13 @@ async def startup_event():
 async def root(request: Request):
     """Serve main dashboard page"""
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Serve favicon"""
+    favicon_path = Path(__file__).parent / "static" / "favicon.ico"
+    return FileResponse(favicon_path, media_type="image/x-icon")
 
 
 @app.get("/health")
