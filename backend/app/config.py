@@ -10,9 +10,8 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Project paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-BACKEND_ROOT = PROJECT_ROOT / "backend"
-DATA_ROOT = PROJECT_ROOT / "docs" / "data"
+BACKEND_ROOT = Path(__file__).parent.parent  # backend/
+DATA_ROOT = BACKEND_ROOT / "docs" / "data"
 UPLOADED_PDF_PATH = DATA_ROOT / "uploaded_pdfs"
 MAPPER_CSV = DATA_ROOT / "statements" / "mapper.csv"
 
@@ -41,3 +40,4 @@ MAX_PAGE_SIZE = 500
 
 # Create directories
 UPLOADED_PDF_PATH.mkdir(parents=True, exist_ok=True)
+(DATA_ROOT / "statements").mkdir(parents=True, exist_ok=True)

@@ -32,9 +32,13 @@ def load_mapper() -> pd.DataFrame:
         _mapper_cache = pd.read_csv(MAPPER_CSV)
         logger.info(f"Loaded {len(_mapper_cache)} mapper records")
         return _mapper_cache
+    except FileNotFoundError:
+        logger.debug(f"Mapper CSV not found (optional): {MAPPER_CSV}")
+        # Return empty dataframe if file doesn't exist - this is optional
+        return pd.DataFrame()
     except Exception as e:
-        logger.error(f"Error loading mapper CSV: {e}")
-        # Return empty dataframe if file doesn't exist
+        logger.warning(f"Error loading mapper CSV: {e}")
+        # Return empty dataframe on any error
         return pd.DataFrame()
 
 

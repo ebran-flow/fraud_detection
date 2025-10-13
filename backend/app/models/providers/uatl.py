@@ -24,6 +24,8 @@ class UATLRawStatement(Base):
     amount = Column(Numeric(18, 2))        # Signed for Format 2
     fee = Column(Numeric(18, 2), default=0)
     balance = Column(Numeric(18, 2))
+    balance_raw = Column(String(64))       # Original balance value before cleaning
+    has_quality_issue = Column(Boolean, default=False)  # True if balance was cleaned
     pdf_format = Column(SmallInteger)      # 1 or 2
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
@@ -52,6 +54,8 @@ class UATLRawStatement(Base):
             'amount': float(self.amount) if self.amount else None,
             'fee': float(self.fee) if self.fee else None,
             'balance': float(self.balance) if self.balance else None,
+            'balance_raw': self.balance_raw,
+            'has_quality_issue': self.has_quality_issue,
             'pdf_format': self.pdf_format,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
