@@ -61,6 +61,13 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
         # Convert to DataFrame for processing
         df = pd.DataFrame([stmt.__dict__ for stmt in raw_statements])
 
+        # Normalize UMTN LOAN_REPAYMENT amounts (Excel shows positive but should be negative)
+        if provider_code == 'UMTN' and 'txn_type' in df.columns:
+            loan_repayment_mask = (df['txn_type'] == 'LOAN_REPAYMENT') & (df['amount'] > 0)
+            if loan_repayment_mask.any():
+                df.loc[loan_repayment_mask, 'amount'] = -df.loc[loan_repayment_mask, 'amount']
+                logger.info(f"Normalized {loan_repayment_mask.sum()} LOAN_REPAYMENT transactions to negative amounts")
+
         # Update metadata with start_date and end_date from transaction dates
         if len(df) > 0 and 'txn_date' in df.columns:
             # Filter out None/NaT values
