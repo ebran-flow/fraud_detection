@@ -61,12 +61,40 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
         # Convert to DataFrame for processing
         df = pd.DataFrame([stmt.__dict__ for stmt in raw_statements])
 
-        # Normalize UMTN LOAN_REPAYMENT amounts (Excel shows positive but should be negative)
+        # Normalize UMTN transaction amounts where Excel shows unsigned values
         if provider_code == 'UMTN' and 'txn_type' in df.columns:
+            # LOAN_REPAYMENT: Always a debit (Excel shows positive but should be negative)
             loan_repayment_mask = (df['txn_type'] == 'LOAN_REPAYMENT') & (df['amount'] > 0)
             if loan_repayment_mask.any():
                 df.loc[loan_repayment_mask, 'amount'] = -df.loc[loan_repayment_mask, 'amount']
                 logger.info(f"Normalized {loan_repayment_mask.sum()} LOAN_REPAYMENT transactions to negative amounts")
+
+            # ADJUSTMENT: Can be credit or debit - infer from balance change
+            # Excel shows positive amount but actual direction varies
+            adjustment_mask = df['txn_type'] == 'ADJUSTMENT'
+            if adjustment_mask.any():
+                balance_field = ProviderFactory.get_balance_field(provider_code)
+                df_sorted = df.sort_values('txn_date').reset_index(drop=True)
+
+                for idx in df_sorted[adjustment_mask].index:
+                    current_balance = df_sorted.loc[idx, balance_field]
+                    # Get previous balance (transaction before this one chronologically)
+                    prev_indices = df_sorted[df_sorted['txn_date'] < df_sorted.loc[idx, 'txn_date']].index
+                    if len(prev_indices) > 0:
+                        prev_balance = df_sorted.loc[prev_indices[-1], balance_field]
+                        balance_change = current_balance - prev_balance
+                        current_amount = df_sorted.loc[idx, 'amount']
+
+                        # If balance decreased, amount should be negative (debit)
+                        # If balance increased, amount should be positive (credit)
+                        if balance_change < 0 and current_amount > 0:
+                            df.loc[df.index[df['txn_id'] == df_sorted.loc[idx, 'txn_id']].tolist(), 'amount'] = -current_amount
+                            logger.debug(f"ADJUSTMENT {df_sorted.loc[idx, 'txn_id']}: balance decreased, made amount negative")
+                        elif balance_change > 0 and current_amount < 0:
+                            df.loc[df.index[df['txn_id'] == df_sorted.loc[idx, 'txn_id']].tolist(), 'amount'] = abs(current_amount)
+                            logger.debug(f"ADJUSTMENT {df_sorted.loc[idx, 'txn_id']}: balance increased, made amount positive")
+
+                logger.info(f"Normalized ADJUSTMENT transaction signs based on balance changes")
 
         # Update metadata with start_date and end_date from transaction dates
         if len(df) > 0 and 'txn_date' in df.columns:

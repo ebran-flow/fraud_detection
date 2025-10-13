@@ -262,16 +262,16 @@ def calculate_opening_balance_mtn(first_balance: float, first_amount: float,
         # Agent gives cash, receives mobile money -> balance increases
         # Opening = Balance - amount + fee
         return first_balance - first_amount + first_fee
-    elif txn_type in ['CASH_IN', 'BILL PAYMENT', 'DEBIT', 'ADJUSTMENT']:
-        # Agent receives cash/pays bill/debit/adjustment -> balance decreases
+    elif txn_type in ['CASH_IN', 'BILL PAYMENT', 'DEBIT']:
+        # Agent receives cash/pays bill/debit -> balance decreases
         # Opening = Balance + amount + fee
         return first_balance + first_amount + first_fee
     elif txn_type in ['DEPOSIT', 'REFUND']:
         # Deposit/Refund -> balance increases by (amount - fee)
         # Opening = Balance - (amount - fee)
         return first_balance - first_amount + first_fee
-    elif txn_type in ['REVERSAL', 'LOAN_REPAYMENT']:
-        # Reversal/Loan repayment -> complex, treat as signed with fee adjustment
+    elif txn_type in ['REVERSAL', 'LOAN_REPAYMENT', 'ADJUSTMENT']:
+        # Reversal/Loan repayment/Adjustment -> signed amount (normalized in processor)
         # Opening = Balance - amount + fee
         return first_balance - first_amount + first_fee
     else:  # TRANSFER, BATCH_TRANSFER, or other types
@@ -314,16 +314,16 @@ def apply_transaction_mtn(balance: float, amount: float, txn_type: str, fee: flo
         # Agent gives cash, receives mobile money -> balance increases
         # New Balance = Balance + amount - fee
         return balance + amount - fee
-    elif txn_type in ['CASH_IN', 'BILL PAYMENT', 'DEBIT', 'ADJUSTMENT']:
-        # Agent receives cash/pays bill/debit/adjustment -> balance decreases
+    elif txn_type in ['CASH_IN', 'BILL PAYMENT', 'DEBIT']:
+        # Agent receives cash/pays bill/debit -> balance decreases
         # New Balance = Balance - amount - fee
         return balance - amount - fee
     elif txn_type in ['DEPOSIT', 'REFUND']:
         # Deposit/Refund -> balance increases by (amount - fee)
         # New Balance = Balance + (amount - fee)
         return balance + amount - fee
-    elif txn_type in ['REVERSAL', 'LOAN_REPAYMENT']:
-        # Reversal/Loan repayment -> complex, amount includes fee adjustment
+    elif txn_type in ['REVERSAL', 'LOAN_REPAYMENT', 'ADJUSTMENT']:
+        # Reversal/Loan repayment/Adjustment -> signed amount (normalized in processor)
         # New Balance = Balance + amount - fee
         return balance + amount - fee
     else:  # TRANSFER, BATCH_TRANSFER, or other types
