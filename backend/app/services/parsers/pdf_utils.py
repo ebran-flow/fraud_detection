@@ -252,11 +252,23 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame
 
     # Clean numeric columns
     # For Format 2, keep the sign in amounts; for Format 1, strip it
+    # Clean amount column with quality issue tracking
     df['amount'] = df['amount'].astype(str).str.replace(',', '').str.strip()
+
+    # Store raw amount before cleaning (for audit trail)
+    df['amount_raw'] = df['amount'].copy()
+
+    # Use regex to extract valid numeric values
     if pdf_format == 1:
-        # Format 1: Remove any sign prefixes
-        df['amount'] = df['amount'].str.lstrip('+-')
-    # Format 2: Keep the sign (already handled above by just removing commas)
+        # Format 1: Extract unsigned number
+        df['amount'] = df['amount'].str.extract(r'^([+\-]?)(\d+(?:\.\d+)?)', expand=False)[1]
+    else:
+        # Format 2: Extract signed number (keep the sign)
+        df['amount'] = df['amount'].str.extract(r'^([+-]?\d+(?:\.\d+)?)', expand=False)
+
+    # Mark rows with amount quality issues
+    df['has_amount_quality_issue'] = (df['amount_raw'] != df['amount']) & df['amount'].notna()
+
     df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
 
     df['fee'] = df['fee'].astype(str).str.replace(',', '').str.strip()
@@ -272,10 +284,13 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame
     # Pattern: optional sign [+-]?, followed by digits with optional decimal
     df['balance'] = df['balance'].str.extract(r'^([+-]?\d+(?:\.\d+)?)', expand=False)
 
-    # Mark rows with quality issues (where balance was modified by regex cleaning)
-    df['has_quality_issue'] = (df['balance_raw'] != df['balance']) & df['balance'].notna()
+    # Mark rows with balance quality issues
+    df['has_balance_quality_issue'] = (df['balance_raw'] != df['balance']) & df['balance'].notna()
 
-    # Count quality issues
+    # Combined quality issue flag (either amount or balance has issues)
+    df['has_quality_issue'] = df['has_amount_quality_issue'] | df['has_balance_quality_issue']
+
+    # Count quality issues (rows with either amount or balance issues)
     quality_issues_count = int(df['has_quality_issue'].sum())
 
     df['balance'] = pd.to_numeric(df['balance'], errors='coerce')

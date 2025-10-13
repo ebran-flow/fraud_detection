@@ -22,10 +22,11 @@ class UATLRawStatement(Base):
     status = Column(String(32))            # Success/Failed
     txn_direction = Column(String(16))     # Credit/Debit (Format 1)
     amount = Column(Numeric(18, 2))        # Signed for Format 2
+    amount_raw = Column(String(64))        # Original amount value before cleaning
     fee = Column(Numeric(18, 2), default=0)
     balance = Column(Numeric(18, 2))
     balance_raw = Column(String(64))       # Original balance value before cleaning
-    has_quality_issue = Column(Boolean, default=False)  # True if balance was cleaned
+    has_quality_issue = Column(Boolean, default=False)  # True if amount or balance was cleaned
     pdf_format = Column(SmallInteger)      # 1 or 2
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
@@ -52,6 +53,7 @@ class UATLRawStatement(Base):
             'status': self.status,
             'txn_direction': self.txn_direction,
             'amount': float(self.amount) if self.amount else None,
+            'amount_raw': self.amount_raw,
             'fee': float(self.fee) if self.fee else None,
             'balance': float(self.balance) if self.balance else None,
             'balance_raw': self.balance_raw,

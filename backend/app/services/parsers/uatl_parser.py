@@ -155,6 +155,7 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
                 'status': str(row.get('status', '')),
                 'txn_direction': str(row.get('txn_direction', '')),
                 'amount': float(row['amount']) if row['amount'] is not None else None,
+                'amount_raw': str(row.get('amount_raw', '')) if row.get('amount_raw') else None,
                 'fee': float(row['fee']) if row['fee'] is not None else 0.0,
                 'balance': float(row['balance']) if row['balance'] is not None else None,
                 'balance_raw': str(row.get('balance_raw', '')) if row.get('balance_raw') else None,
