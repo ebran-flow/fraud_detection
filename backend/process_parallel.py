@@ -212,7 +212,7 @@ def log_progress(result, counter, total, start_time):
 
 def main():
     parser = argparse.ArgumentParser(description='Parallel processing for UATL statements')
-    parser.add_argument('--workers', type=int, default=6, help='Number of parallel workers (default: 6, max: 12)')
+    parser.add_argument('--workers', type=int, default=12, help='Number of parallel workers (default: 6, max: 12)')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--month', type=str, help='Filter by specific month (e.g., 2025-09)')
     args = parser.parse_args()
