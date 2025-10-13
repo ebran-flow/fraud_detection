@@ -311,7 +311,7 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     if provider_code == 'UMTN':
         opening_balance = calculate_opening_balance_mtn(first_balance, first_amount)
     elif pdf_format == 2:
-        opening_balance = calculate_opening_balance_format2(first_balance, first_amount)
+        opening_balance = calculate_opening_balance_format2(first_balance, first_amount, first_description)
     elif is_format1_csv(df, pdf_format):
         opening_balance = calculate_opening_balance_format1_csv(first_balance, first_amount, first_fee, first_description)
     else:  # Format 1 PDF
@@ -365,7 +365,7 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             if provider_code == 'UMTN':
                 running_balance = apply_transaction_mtn(running_balance, amount)
             elif pdf_format == 2:
-                running_balance = apply_transaction_format2(running_balance, amount)
+                running_balance = apply_transaction_format2(running_balance, amount, description)
             elif is_format1_csv(df, pdf_format):
                 running_balance = apply_transaction_format1_csv(running_balance, amount, fee, description)
             else:  # Format 1 PDF

@@ -167,18 +167,19 @@ def apply_transaction_format1_csv(balance: float, amount: float, fee: float,
 # FORMAT 2 LOGIC (PDF/CSV with signed amounts, fees included)
 # ============================================================================
 
-def calculate_opening_balance_format2(first_balance: float, first_amount: float) -> float:
+def calculate_opening_balance_format2(first_balance: float, first_amount: float, first_description: str = '') -> float:
     """
     Calculate opening balance for Format 2 (signed amounts, fees included).
 
-    Logic: Opening = Balance - amount
+    Logic: Opening = Balance - amount - implicit_fees
     - Amount is signed (positive=credit, negative=debit)
     - Fees are already included in the amount
-    - No implicit fees/cashbacks to calculate
+    - Implicit fees/cashbacks apply (IND02, Merchant Payment)
 
     Args:
         first_balance: Balance shown in first transaction
         first_amount: Amount (signed, fees included)
+        first_description: Description for detecting implicit fees
 
     Returns:
         Opening balance
@@ -186,21 +187,27 @@ def calculate_opening_balance_format2(first_balance: float, first_amount: float)
     first_balance = float(first_balance)
     first_amount = float(first_amount)
 
-    return first_balance - first_amount
+    # Calculate implicit fees (applies to all Airtel formats)
+    additional_fee = calculate_implicit_fees_format1(first_amount, first_description)
+
+    # For signed amounts: negative = debit (reduces balance), positive = credit (increases balance)
+    # Additional_fee is positive for fees (reduce balance), negative for cashback (increase balance)
+    return first_balance - first_amount - additional_fee
 
 
-def apply_transaction_format2(balance: float, amount: float) -> float:
+def apply_transaction_format2(balance: float, amount: float, description: str = '') -> float:
     """
     Apply transaction to balance for Format 2 (signed amounts, fees included).
 
-    Logic: New Balance = Balance + amount
+    Logic: New Balance = Balance + amount - implicit_fees
     - Amount is signed (positive=credit, negative=debit)
     - Fees are already included in the amount
-    - No implicit fees/cashbacks to calculate
+    - Implicit fees/cashbacks apply (IND02, Merchant Payment)
 
     Args:
         balance: Current balance
         amount: Amount (signed, fees included)
+        description: Description for detecting implicit fees
 
     Returns:
         New balance
@@ -208,7 +215,12 @@ def apply_transaction_format2(balance: float, amount: float) -> float:
     balance = float(balance)
     amount = float(amount)
 
-    return balance + amount
+    # Calculate implicit fees (applies to all Airtel formats)
+    additional_fee = calculate_implicit_fees_format1(amount, description)
+
+    # For signed amounts: negative = debit (reduces balance), positive = credit (increases balance)
+    # Additional_fee is positive for fees (reduce balance), negative for cashback (increase balance)
+    return balance + amount - additional_fee
 
 
 # ============================================================================
