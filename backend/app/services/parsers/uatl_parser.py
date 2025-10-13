@@ -82,10 +82,12 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
 
     try:
         # Use existing extraction logic
-        df, acc_number = extract_data_from_pdf(pdf_path)
+        df, acc_number, quality_issues_count = extract_data_from_pdf(pdf_path)
 
         if df.empty:
             raise ValueError(f"No transaction data extracted from {pdf_path}")
+
+        logger.info(f"Extracted {len(df)} transactions with {quality_issues_count} quality issues")
 
         # Get PDF format
         pdf_format = df.iloc[0].get('pdf_format', 1) if len(df) > 0 else 1
@@ -155,6 +157,8 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
                 'amount': float(row['amount']) if row['amount'] is not None else None,
                 'fee': float(row['fee']) if row['fee'] is not None else 0.0,
                 'balance': float(row['balance']) if row['balance'] is not None else None,
+                'balance_raw': str(row.get('balance_raw', '')) if row.get('balance_raw') else None,
+                'has_quality_issue': bool(row.get('has_quality_issue', False)),
                 'pdf_format': pdf_format,
             }
             raw_statements.append(raw_stmt)
@@ -171,6 +175,8 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
             'summary_closing_balance': None,  # Will be extracted from PDF summary section if available
             'first_balance': float(df.iloc[0]['balance']) if len(df) > 0 else None,
             'last_balance': float(df.iloc[-1]['balance']) if len(df) > 0 else None,
+            # Data quality tracking (similar to duplicate_count)
+            'quality_issues_count': quality_issues_count,
             # Summary fields extracted from Airtel Format 1 PDFs
             'summary_email_address': summary_email_address,
             'summary_customer_name': summary_customer_name,

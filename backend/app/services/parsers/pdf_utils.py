@@ -237,12 +237,15 @@ def is_valid_date(value: Any) -> bool:
         return False
 
 
-def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> pd.DataFrame:
+def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame, int]:
     """
     Clean and convert DataFrame datatypes.
     - Parses dates
     - Converts numeric columns (amount, fee, balance)
     - Cleans text columns and removes newlines from descriptions
+
+    Returns:
+        Tuple[pd.DataFrame, int]: Cleaned dataframe and count of quality issues found
     """
     # Parse dates
     df['txn_date'] = df['txn_date'].apply(lambda x: parse_date_string(str(x).strip(), EXPECTED_DT_FORMATS))
@@ -259,7 +262,22 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> pd.DataFrame:
     df['fee'] = df['fee'].astype(str).str.replace(',', '').str.strip()
     df['fee'] = pd.to_numeric(df['fee'], errors='coerce').fillna(0)
 
+    # Clean balance column with quality issue tracking
     df['balance'] = df['balance'].astype(str).str.replace(',', '').str.strip()
+
+    # Store raw balance before cleaning (for audit trail)
+    df['balance_raw'] = df['balance'].copy()
+
+    # Use regex to extract {sign(if applicable)}_{amount(numbers)} and remove the rest
+    # Pattern: optional sign [+-]?, followed by digits with optional decimal
+    df['balance'] = df['balance'].str.extract(r'^([+-]?\d+(?:\.\d+)?)', expand=False)
+
+    # Mark rows with quality issues (where balance was modified by regex cleaning)
+    df['has_quality_issue'] = (df['balance_raw'] != df['balance']) & df['balance'].notna()
+
+    # Count quality issues
+    quality_issues_count = int(df['has_quality_issue'].sum())
+
     df['balance'] = pd.to_numeric(df['balance'], errors='coerce')
 
     # Clean text columns
@@ -276,7 +294,7 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> pd.DataFrame:
     df['status'] = df['status'].astype(str).str.strip()
     df['txn_id'] = df['txn_id'].astype(str).str.strip()
 
-    return df
+    return df, quality_issues_count
 
 
 def apply_format2_business_rules(df: pd.DataFrame) -> pd.DataFrame:
@@ -401,13 +419,14 @@ def _calculate_segmented_balance(df: pd.DataFrame, initial_opening_balance: floa
     return calculated_balance
 
 
-def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str]]:
+def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], int]:
     """
     Extract raw tabular data from Airtel PDF statement (handles both formats).
 
     Returns:
         pd.DataFrame: Raw transaction data with proper datatypes
         str: Account number from statement
+        int: Count of rows with quality issues (balance data cleaning)
     """
     logger.info(f"Processing PDF: {pdf_path}")
 
@@ -470,18 +489,18 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str]]:
                 valid_rows = all_rows
 
             else:
-                return pd.DataFrame(), acc_number
+                return pd.DataFrame(), acc_number, 0
 
             if not valid_rows:
                 logger.warning(f"No valid transaction rows found in {pdf_path}")
-                return pd.DataFrame(), acc_number
+                return pd.DataFrame(), acc_number, 0
 
             # Create DataFrame
             df = pd.DataFrame(valid_rows, columns=header)
             df['pdf_format'] = pdf_format
 
             # Clean and convert datatypes
-            df = clean_dataframe(df, pdf_format=pdf_format)
+            df, quality_issues_count = clean_dataframe(df, pdf_format=pdf_format)
 
             # Apply Format 2 business rules if applicable
             if pdf_format == 2:
@@ -489,7 +508,8 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str]]:
                 if '_sequence' in df.columns:
                     df = df.drop(columns=['_sequence'])
 
-            return df, acc_number
+            logger.info(f"Found {quality_issues_count} rows with balance quality issues")
+            return df, acc_number, quality_issues_count
 
     except Exception as e:
         logger.error(f"Error extracting data from {pdf_path}: {e}")
