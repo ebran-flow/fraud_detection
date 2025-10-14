@@ -100,6 +100,8 @@ services:
 
 volumes:
   mysql_data:
+    name: mysql_data
     driver: local
   upload_data:
+    name: upload_data
     driver: local
