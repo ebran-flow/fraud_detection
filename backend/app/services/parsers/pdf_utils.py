@@ -255,6 +255,9 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame
     # Clean amount column with quality issue tracking
     df['amount'] = df['amount'].astype(str).str.replace(',', '').str.strip()
 
+    # Replace empty strings with '0' before further processing
+    df['amount'] = df['amount'].replace(['', 'nan', 'None'], '0')
+
     # Store raw amount before cleaning (for audit trail)
     df['amount_raw'] = df['amount'].copy()
 
@@ -284,13 +287,47 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame
     df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
 
     df['fee'] = df['fee'].astype(str).str.replace(',', '').str.strip()
-    df['fee'] = pd.to_numeric(df['fee'], errors='coerce').fillna(0)
 
-    # Clean balance column with quality issue tracking
+    # Store raw fee and balance before cleaning (for detecting overlap issues)
+    df['fee_raw'] = df['fee'].copy()
     df['balance'] = df['balance'].astype(str).str.replace(',', '').str.strip()
+
+    # Replace empty strings with '0' before further processing
+    df['balance'] = df['balance'].replace(['', 'nan', 'None'], '0')
 
     # Store raw balance before cleaning (for audit trail)
     df['balance_raw'] = df['balance'].copy()
+
+    # Detect and fix overlapping fee/balance columns
+    # Pattern: fee contains very large number (>1M) AND balance starts with dot
+    # Example: fee='8502200500' balance='.02052102.03' should be fee='0' balance='252102.03'
+    overlap_mask = (
+        (pd.to_numeric(df['fee'], errors='coerce') > 1000000) &
+        (df['balance'].str.startswith('.'))
+    )
+
+    if overlap_mask.any():
+        logger.warning(f"Detected {overlap_mask.sum()} rows with overlapping fee/balance columns")
+        for idx in df[overlap_mask].index:
+            fee_val = df.at[idx, 'fee']
+            balance_val = df.at[idx, 'balance']
+
+            # Reconstruct the correct balance from fee + balance overlap
+            # fee='8502200500' + balance='.02052102.03' = '8502200500.02052102.03'
+            # We need to extract the correct balance by finding the pattern
+            combined = fee_val + balance_val
+
+            # Try to extract a reasonable balance (between 0 and 100M typically)
+            # Look for pattern: extract last valid amount from combined string
+            balance_match = re.search(r'(\d{1,9}\.?\d{0,2})$', combined)
+            if balance_match:
+                corrected_balance = balance_match.group(1)
+                df.at[idx, 'balance'] = corrected_balance
+                df.at[idx, 'fee'] = '0'
+                df.at[idx, 'has_quality_issue'] = 1
+                logger.warning(f"  Row {idx}: Corrected overlap - fee_raw='{fee_val}', balance_raw='{balance_val}' -> fee='0', balance='{corrected_balance}'")
+
+    df['fee'] = pd.to_numeric(df['fee'], errors='coerce').fillna(0)
 
     # Use regex to extract {sign(if applicable)}_{amount(numbers)} and remove the rest
     # Pattern: optional sign [+-]?, followed by digits with optional decimal

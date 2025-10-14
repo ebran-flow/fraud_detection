@@ -24,6 +24,7 @@ class UATLRawStatement(Base):
     amount = Column(Numeric(18, 2))        # Signed for Format 2
     amount_raw = Column(String(64))        # Original amount value before cleaning
     fee = Column(Numeric(18, 2), default=0)
+    fee_raw = Column(String(64))           # Original fee value before cleaning
     balance = Column(Numeric(18, 2))
     balance_raw = Column(String(64))       # Original balance value before cleaning
     has_quality_issue = Column(Boolean, default=False)  # True if amount or balance was cleaned
@@ -55,6 +56,7 @@ class UATLRawStatement(Base):
             'amount': float(self.amount) if self.amount else None,
             'amount_raw': self.amount_raw,
             'fee': float(self.fee) if self.fee else None,
+            'fee_raw': self.fee_raw,
             'balance': float(self.balance) if self.balance else None,
             'balance_raw': self.balance_raw,
             'has_quality_issue': self.has_quality_issue,

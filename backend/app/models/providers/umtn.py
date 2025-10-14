@@ -23,6 +23,7 @@ class UMTNRawStatement(Base):
     txn_direction = Column(String(16))    # Derived from amount sign
     amount = Column(Numeric(18, 2))       # Signed: negative=outgoing, positive=incoming
     fee = Column(Numeric(18, 2), default=0)
+    fee_raw = Column(String(64))          # Original fee value before cleaning
     # UMTN-specific fields
     commission_amount = Column(Numeric(18, 2))
     tax = Column(Numeric(18, 2))
@@ -55,6 +56,7 @@ class UMTNRawStatement(Base):
             'txn_direction': self.txn_direction,
             'amount': float(self.amount) if self.amount else None,
             'fee': float(self.fee) if self.fee else None,
+            'fee_raw': self.fee_raw,
             'commission_amount': float(self.commission_amount) if self.commission_amount else None,
             'tax': float(self.tax) if self.tax else None,
             'commission_receiving_no': self.commission_receiving_no,
