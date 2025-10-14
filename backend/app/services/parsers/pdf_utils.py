@@ -20,6 +20,52 @@ EXPECTED_DT_FORMATS = [
 ]
 
 
+def is_header_row(row: List[str]) -> bool:
+    """
+    Detect if a row is a header row (indicates manipulation).
+
+    Header rows contain column names like:
+    - "Date", "Transaction ID", "Transaction Type", "Description", etc.
+    - "Transation ID" (typo in Format 2)
+
+    Returns:
+        True if this is a header row that should be skipped
+    """
+    if not row or len(row) < 3:
+        return False
+
+    # Convert row to string for checking
+    row_str = ' '.join([str(cell) for cell in row if cell]).lower()
+
+    # Header keywords
+    header_keywords = [
+        'transaction id',
+        'transation id',  # Airtel's typo
+        'transaction type',
+        'transaction date',
+        'credit/debit',
+        'transaction amount',
+    ]
+
+    # Check if row contains multiple header keywords
+    keyword_count = sum(1 for keyword in header_keywords if keyword in row_str)
+
+    # If 2 or more header keywords are present, it's likely a header row
+    if keyword_count >= 2:
+        return True
+
+    # Additional checks for specific column values
+    # Check if any cell contains header-specific values
+    for cell in row:
+        cell_str = str(cell).strip().lower()
+        if cell_str in ['date', 'description', 'status', 'amount', 'fee', 'balance',
+                        'from', 'to', 'credit/debit', 'transaction amount']:
+            # Single exact match of column name indicates header
+            return True
+
+    return False
+
+
 def parse_date_string(date_str: str, formats: List[str]) -> Optional[datetime]:
     """Parse date string using multiple formats."""
     for fmt in formats:
@@ -483,7 +529,7 @@ def _calculate_segmented_balance(df: pd.DataFrame, initial_opening_balance: floa
     return calculated_balance
 
 
-def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], int]:
+def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], int, int]:
     """
     Extract raw tabular data from Airtel PDF statement (handles both formats).
 
@@ -491,6 +537,7 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], i
         pd.DataFrame: Raw transaction data with proper datatypes
         str: Account number from statement
         int: Count of rows with quality issues (balance data cleaning)
+        int: Count of header rows found in data (manipulation indicator)
     """
     logger.info(f"Processing PDF: {pdf_path}")
 
@@ -507,6 +554,7 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], i
 
             # Extract transaction tables
             all_rows = []
+            header_rows_found = 0  # Track header rows (manipulation indicator)
 
             if pdf_format == 1:
                 header = ['txn_id', 'txn_date', 'description', 'status',
@@ -517,14 +565,37 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], i
                     for table in tables:
                         all_rows.extend(table)
 
-                valid_rows = [row for row in all_rows if len(row) >= 8 and is_valid_date(row[1])]
+                # Filter out header rows and invalid rows
+                valid_rows = []
+                for row in all_rows:
+                    if is_header_row(row):
+                        header_rows_found += 1
+                        logger.warning(f"Header row found in data (manipulation): {row[:3]}...")
+                    elif len(row) >= 8 and is_valid_date(row[1]):
+                        valid_rows.append(row)
 
             elif pdf_format == 2:
                 for page in pages:
                     tables = page.extract_tables()
                     for table in tables:
                         for row in table[1:]:
-                            if len(row) >= 10 and is_valid_date(row[0]):
+                            # Check for header rows BEFORE date validation
+                            if is_header_row(row):
+                                header_rows_found += 1
+                                logger.warning(f"Header row found in data (manipulation): {row[:3]}...")
+                                continue
+
+                            # Skip rows that don't meet basic requirements
+                            if len(row) < 10:
+                                continue
+
+                            # Additional check: if amount column contains 'Amount', it's a header
+                            if len(row) >= 8 and str(row[7]).strip().lower() == 'amount':
+                                header_rows_found += 1
+                                logger.warning(f"Header row found in data (amount='Amount'): {row[:3]}...")
+                                continue
+
+                            if is_valid_date(row[0]):
                                 txn_date = row[0]
                                 txn_id = row[1]
                                 description = f"{row[2]} - {row[3]}"
@@ -553,11 +624,11 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], i
                 valid_rows = all_rows
 
             else:
-                return pd.DataFrame(), acc_number, 0
+                return pd.DataFrame(), acc_number, 0, 0
 
             if not valid_rows:
                 logger.warning(f"No valid transaction rows found in {pdf_path}")
-                return pd.DataFrame(), acc_number, 0
+                return pd.DataFrame(), acc_number, 0, header_rows_found
 
             # Create DataFrame
             df = pd.DataFrame(valid_rows, columns=header)
@@ -573,7 +644,9 @@ def extract_data_from_pdf(pdf_path: str) -> Tuple[pd.DataFrame, Optional[str], i
                     df = df.drop(columns=['_sequence'])
 
             logger.info(f"Found {quality_issues_count} rows with balance quality issues")
-            return df, acc_number, quality_issues_count
+            if header_rows_found > 0:
+                logger.warning(f"Found {header_rows_found} header rows in transaction data (MANIPULATION INDICATOR)")
+            return df, acc_number, quality_issues_count, header_rows_found
 
     except Exception as e:
         logger.error(f"Error extracting data from {pdf_path}: {e}")
