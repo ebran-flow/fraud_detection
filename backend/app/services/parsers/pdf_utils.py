@@ -258,6 +258,10 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame
     # Store raw amount before cleaning (for audit trail)
     df['amount_raw'] = df['amount'].copy()
 
+    # Clean up malformed signs (like -+1500000 or +-1500000)
+    # Keep only the first sign if multiple signs exist
+    df['amount'] = df['amount'].str.replace(r'^([+-])([+-]+)', r'\1', regex=True)
+
     # Use regex to extract valid numeric values
     if pdf_format == 1:
         # Format 1: Extract unsigned number
@@ -265,6 +269,14 @@ def clean_dataframe(df: pd.DataFrame, pdf_format: int = 1) -> Tuple[pd.DataFrame
     else:
         # Format 2: Extract signed number (keep the sign)
         df['amount'] = df['amount'].str.extract(r'^([+-]?\d+(?:\.\d+)?)', expand=False)
+
+    # Check for failed extractions before conversion
+    failed_extractions = df[df['amount'].isna()]
+    if not failed_extractions.empty:
+        logger.error(f"Failed to extract amount for {len(failed_extractions)} rows")
+        for idx, row in failed_extractions.iterrows():
+            logger.error(f"  Row {idx}: amount_raw='{row['amount_raw']}', txn_id={row.get('txn_id', 'N/A')}, description={row.get('description', 'N/A')}")
+        raise ValueError(f"Amount extraction failed for {len(failed_extractions)} transactions. Check logs for details.")
 
     # Mark rows with amount quality issues
     df['has_amount_quality_issue'] = (df['amount_raw'] != df['amount']) & df['amount'].notna()
