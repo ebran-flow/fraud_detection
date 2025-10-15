@@ -107,10 +107,18 @@ def parse_umtn_excel(file_path: str, run_id: str) -> Tuple[List[Dict[str, Any]],
             from_acc = str(row.get('From Account', '')) if pd.notna(row.get('From Account')) else ''
             to_acc = str(row.get('To Account', '')) if pd.notna(row.get('To Account')) else ''
 
+            # Extract transaction ID
+            txn_id = str(row.get('Transaction ID', '')) if pd.notna(row.get('Transaction ID')) else ''
+
+            # Skip rows with empty transaction ID (prevents unique constraint violations)
+            if not txn_id or txn_id.strip() == '':
+                logger.warning(f"Skipping row {idx} with empty Transaction ID")
+                continue
+
             raw_stmt = {
                 'run_id': run_id,
                 'acc_number': acc_number,  # From mapper.csv
-                'txn_id': str(row.get('Transaction ID', '')) if pd.notna(row.get('Transaction ID')) else '',
+                'txn_id': txn_id,
                 'txn_date': txn_date,
                 'txn_type': str(row.get('Transaction Type', '')) if pd.notna(row.get('Transaction Type')) else '',
                 'description': f"{row.get('Transaction Type', '')} - {from_acc} to {to_acc}",

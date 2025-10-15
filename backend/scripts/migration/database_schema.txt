@@ -1,0 +1,337 @@
+================================================================================
+DATABASE: fraud_detection
+================================================================================
+
+================================================================================
+TABLE/VIEW: metadata
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+run_id                         varchar(64)               NO    UNI   NULL                                
+acc_prvdr_code                 varchar(16)               NO    MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+format                         varchar(20)               YES         NULL                                
+mime                           varchar(100)              YES         NULL                                
+submitted_date                 date                      YES         NULL                                
+start_date                     date                      YES         NULL                                
+end_date                       date                      YES         NULL                                
+rm_name                        varchar(256)              YES         NULL                                
+num_rows                       int                       YES         NULL                                
+quality_issues_count           int                       YES   MUL   0                                   
+header_rows_count              int                       YES         0                                   
+parsing_status                 varchar(32)               YES         SUCCESS                             
+parsing_error                  text                      YES         NULL                                
+sheet_md5                      varchar(64)               YES         NULL                                
+summary_opening_balance        decimal(18,2)             YES         NULL                                
+summary_closing_balance        decimal(18,2)             YES         NULL                                
+first_balance                  decimal(18,2)             YES         NULL                                
+last_balance                   decimal(18,2)             YES         NULL                                
+summary_request_date           date                      YES         NULL                                
+summary_statement_period       varchar(100)              YES         NULL                                
+summary_mobile_number          varchar(50)               YES         NULL                                
+summary_customer_name          varchar(255)              YES         NULL                                
+summary_email_address          varchar(255)              YES         NULL                                
+meta_title                     varchar(512)              YES         NULL                                
+meta_author                    varchar(256)              YES         NULL                                
+meta_producer                  varchar(256)              YES         NULL                                
+meta_created_at                datetime                  YES         NULL                                
+meta_modified_at               datetime                  YES         NULL                                
+pdf_path                       varchar(512)              YES         NULL                                
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+================================================================================
+TABLE/VIEW: processed_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+raw_id                         bigint                    NO    MUL   NULL                                
+run_id                         varchar(64)               YES   MUL   NULL                                
+acc_prvdr_code                 varchar(16)               YES   MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+txn_id                         varchar(128)              YES         NULL                                
+txn_date                       datetime                  YES         NULL                                
+txn_type                       varchar(64)               YES         NULL                                
+description                    text                      YES         NULL                                
+status                         varchar(32)               YES         NULL                                
+amount                         decimal(18,2)             YES         NULL                                
+fee                            decimal(18,2)             YES         NULL                                
+balance                        decimal(18,2)             YES         NULL                                
+is_duplicate                   tinyint(1)                YES         NULL                                
+is_special_txn                 tinyint(1)                YES         NULL                                
+special_txn_type               varchar(64)               YES         NULL                                
+calculated_running_balance     decimal(18,2)             YES         NULL                                
+balance_diff                   decimal(18,2)             YES         NULL                                
+balance_diff_change_count      int                       YES         NULL                                
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+
+================================================================================
+TABLE/VIEW: raw_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+run_id                         varchar(64)               NO    MUL   NULL                                
+acc_prvdr_code                 varchar(16)               YES   MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+txn_id                         varchar(128)              YES         NULL                                
+txn_date                       datetime                  YES         NULL                                
+txn_type                       varchar(64)               YES         NULL                                
+description                    text                      YES         NULL                                
+from_acc                       varchar(64)               YES         NULL                                
+to_acc                         varchar(64)               YES         NULL                                
+status                         varchar(32)               YES         NULL                                
+txn_direction                  varchar(16)               YES         NULL                                
+amount                         decimal(18,2)             YES         NULL                                
+fee                            decimal(18,2)             YES         NULL                                
+balance                        decimal(18,2)             YES         NULL                                
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+
+================================================================================
+TABLE/VIEW: summary
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+run_id                         varchar(64)               NO    UNI   NULL                                
+acc_prvdr_code                 varchar(16)               NO    MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+rm_name                        varchar(256)              YES         NULL                                
+num_rows                       int                       YES         NULL                                
+sheet_md5                      varchar(64)               YES         NULL                                
+summary_opening_balance        decimal(18,2)             YES         NULL                                
+summary_closing_balance        decimal(18,2)             YES         NULL                                
+first_balance                  decimal(18,2)             YES         NULL                                
+last_balance                   decimal(18,2)             YES         NULL                                
+duplicate_count                int                       YES         0                                   
+missing_days_detected          tinyint(1)                YES         0                                   
+gap_related_balance_changes    int                       YES         0                                   
+balance_match                  enum('Success','Failed')  YES         NULL                                
+verification_status            varchar(64)               YES         NULL                                
+verification_reason            text                      YES         NULL                                
+credits                        decimal(18,2)             YES         NULL                                
+debits                         decimal(18,2)             YES         NULL                                
+fees                           decimal(18,2)             YES         NULL                                
+charges                        decimal(18,2)             YES         NULL                                
+calculated_closing_balance     decimal(18,2)             YES         NULL                                
+balance_diff_changes           int                       YES         0                                   
+balance_diff_change_ratio      float                     YES         0                                   
+meta_title                     varchar(512)              YES         NULL                                
+meta_author                    varchar(256)              YES         NULL                                
+meta_producer                  varchar(256)              YES         NULL                                
+meta_created_at                datetime                  YES         NULL                                
+meta_modified_at               datetime                  YES         NULL                                
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+================================================================================
+TABLE/VIEW: uatl_processed_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+raw_id                         bigint                    NO    MUL   NULL                                
+run_id                         varchar(64)               YES   MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+txn_id                         varchar(128)              YES         NULL                                
+txn_date                       datetime                  YES   MUL   NULL                                
+txn_type                       varchar(64)               YES         NULL                                
+description                    text                      YES         NULL                                
+status                         varchar(32)               YES         NULL                                
+amount                         decimal(18,2)             YES         NULL                                
+fee                            decimal(18,2)             YES         0.00                                
+balance                        decimal(18,2)             YES         NULL                                
+is_duplicate                   tinyint(1)                YES         0                                   
+is_special_txn                 tinyint(1)                YES         0                                   
+special_txn_type               varchar(64)               YES         NULL                                
+calculated_running_balance     decimal(18,2)             YES         NULL                                
+balance_diff                   decimal(18,2)             YES         NULL                                
+balance_diff_change_count      int                       YES         0                                   
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+================================================================================
+TABLE/VIEW: uatl_raw_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+run_id                         varchar(64)               NO    MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+txn_id                         varchar(128)              YES   MUL   NULL                                
+txn_date                       datetime                  YES   MUL   NULL                                
+txn_type                       varchar(64)               YES         NULL                                
+description                    text                      YES         NULL                                
+from_acc                       varchar(64)               YES         NULL                                
+to_acc                         varchar(64)               YES         NULL                                
+status                         varchar(32)               YES         NULL                                
+txn_direction                  varchar(16)               YES         NULL                                
+amount                         decimal(18,2)             YES         NULL                                
+amount_raw                     varchar(64)               YES         NULL                                
+fee                            decimal(18,2)             YES         0.00                                
+fee_raw                        varchar(64)               YES         NULL                                
+balance                        decimal(18,2)             YES         NULL                                
+balance_raw                    varchar(50)               YES         NULL                                
+has_quality_issue              tinyint(1)                YES   MUL   0                                   
+pdf_format                     tinyint                   YES         NULL                                
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+================================================================================
+TABLE/VIEW: umtn_processed_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+raw_id                         bigint                    NO    MUL   NULL                                
+run_id                         varchar(64)               YES   MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+txn_id                         varchar(128)              YES         NULL                                
+txn_date                       datetime                  YES   MUL   NULL                                
+txn_type                       varchar(64)               YES         NULL                                
+description                    text                      YES         NULL                                
+status                         varchar(32)               YES         NULL                                
+amount                         decimal(18,2)             YES         NULL                                
+fee                            decimal(18,2)             YES         0.00                                
+commission_amount              decimal(18,2)             YES         0.00                                
+tax                            decimal(18,2)             YES         0.00                                
+commission_receiving_no        varchar(64)               YES         NULL                                
+commission_balance             decimal(18,2)             YES         NULL                                
+float_balance                  decimal(18,2)             YES         NULL                                
+is_duplicate                   tinyint(1)                YES         0                                   
+is_special_txn                 tinyint(1)                YES         0                                   
+special_txn_type               varchar(64)               YES         NULL                                
+calculated_running_balance     decimal(18,2)             YES         NULL                                
+balance_diff                   decimal(18,2)             YES         NULL                                
+balance_diff_change_count      int                       YES         0                                   
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+================================================================================
+TABLE/VIEW: umtn_raw_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+id                             bigint                    NO    PRI   NULL            auto_increment      
+run_id                         varchar(64)               NO    MUL   NULL                                
+acc_number                     varchar(64)               YES   MUL   NULL                                
+txn_id                         varchar(128)              YES         NULL                                
+txn_date                       datetime                  YES   MUL   NULL                                
+txn_type                       varchar(64)               YES         NULL                                
+description                    text                      YES         NULL                                
+from_acc                       varchar(64)               YES         NULL                                
+to_acc                         varchar(64)               YES         NULL                                
+status                         varchar(32)               YES         NULL                                
+txn_direction                  varchar(16)               YES         NULL                                
+amount                         decimal(18,2)             YES         NULL                                
+fee                            decimal(18,2)             YES         0.00                                
+fee_raw                        varchar(64)               YES         NULL                                
+commission_amount              decimal(18,2)             YES         0.00                                
+tax                            decimal(18,2)             YES         0.00                                
+commission_receiving_no        varchar(64)               YES         NULL                                
+commission_balance             decimal(18,2)             YES         NULL                                
+float_balance                  decimal(18,2)             YES         NULL                                
+created_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+updated_at                     timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+================================================================================
+TABLE/VIEW: unified_statements
+================================================================================
+Field                          Type                      Null  Key   Default         Extra
+------------------------------------------------------------------------------------------------------------------------
+metadata_id                    bigint                    NO          0                                   
+run_id                         varchar(64)               NO          NULL                                
+acc_number                     varchar(64)               YES         NULL                                
+acc_prvdr_code                 varchar(16)               NO          NULL                                
+format                         varchar(20)               YES         NULL                                
+mime                           varchar(100)              YES         NULL                                
+submitted_date                 date                      YES         NULL                                
+start_date                     date                      YES         NULL                                
+end_date                       date                      YES         NULL                                
+rm_name                        varchar(256)              YES         NULL                                
+num_rows                       int                       YES         NULL                                
+parsing_status                 varchar(32)               YES         SUCCESS                             
+parsing_error                  text                      YES         NULL                                
+imported_at                    timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+status                         varchar(22)               NO                                              
+processing_status              varchar(9)                NO                                              
+verification_status            varchar(64)               YES         NULL                                
+verification_reason            text                      YES         NULL                                
+balance_match                  enum('Success','Failed')  YES         NULL                                
+duplicate_count                int                       YES         0                                   
+missing_days_detected          tinyint(1)                YES         0                                   
+gap_related_balance_changes    int                       YES         0                                   
+processed_at                   timestamp                 YES         CURRENT_TIMESTAMP DEFAULT_GENERATED   
+balance_diff_changes           int                       YES         0                                   
+balance_diff_change_ratio      float                     YES         0                                   
+calculated_closing_balance     decimal(18,2)             YES         NULL                                
+stmt_closing_balance           decimal(18,2)             YES         NULL                                
+meta_title                     varchar(512)              YES         NULL                                
+meta_author                    varchar(256)              YES         NULL                                
+meta_producer                  varchar(256)              YES         NULL                                
+meta_created_at                datetime                  YES         NULL                                
+meta_modified_at               datetime                  YES         NULL                                
+
+================================================================================
+INDEXES
+================================================================================
+
+TABLE: metadata
+--------------------------------------------------------------------------------
+  PRIMARY: id (BTREE)
+  run_id: run_id (BTREE)
+  idx_acc_number: acc_number (BTREE)
+  idx_run_id: run_id (BTREE)
+  idx_provider: acc_prvdr_code (BTREE)
+  idx_quality_issues_count: quality_issues_count (BTREE)
+
+TABLE: summary
+--------------------------------------------------------------------------------
+  PRIMARY: id (BTREE)
+  run_id: run_id (BTREE)
+  idx_run_id: run_id (BTREE)
+  idx_acc_number: acc_number (BTREE)
+  idx_provider: acc_prvdr_code (BTREE)
+
+TABLE: uatl_raw_statements
+--------------------------------------------------------------------------------
+  PRIMARY: id (BTREE)
+  idx_acc_number: acc_number (BTREE)
+  idx_run_id: run_id (BTREE)
+  idx_txn_date: txn_date (BTREE)
+  idx_uatl_txn_id: txn_id (BTREE)
+  idx_has_quality_issue: has_quality_issue (BTREE)
+
+TABLE: uatl_processed_statements
+--------------------------------------------------------------------------------
+  PRIMARY: id (BTREE)
+  idx_run_id: run_id (BTREE)
+  idx_acc_number: acc_number (BTREE)
+  idx_txn_date: txn_date (BTREE)
+  raw_id: raw_id (BTREE)
+
+TABLE: umtn_raw_statements
+--------------------------------------------------------------------------------
+  PRIMARY: id (BTREE)
+  uq_run_txn: run_id (BTREE)
+  uq_run_txn: txn_id (BTREE)
+  idx_acc_number: acc_number (BTREE)
+  idx_run_id: run_id (BTREE)
+  idx_txn_date: txn_date (BTREE)
+
+TABLE: umtn_processed_statements
+--------------------------------------------------------------------------------
+  PRIMARY: id (BTREE)
+  idx_run_id: run_id (BTREE)
+  idx_acc_number: acc_number (BTREE)
+  idx_txn_date: txn_date (BTREE)
+  raw_id: raw_id (BTREE)
+
+================================================================================
+VIEW DEFINITION: unified_statements
+================================================================================
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `unified_statements` AS select `m`.`id` AS `metadata_id`,`m`.`run_id` AS `run_id`,`m`.`acc_number` AS `acc_number`,`m`.`acc_prvdr_code` AS `acc_prvdr_code`,`m`.`format` AS `format`,`m`.`mime` AS `mime`,`m`.`submitted_date` AS `submitted_date`,`m`.`start_date` AS `start_date`,`m`.`end_date` AS `end_date`,`m`.`rm_name` AS `rm_name`,`m`.`num_rows` AS `num_rows`,`m`.`parsing_status` AS `parsing_status`,`m`.`parsing_error` AS `parsing_error`,`m`.`created_at` AS `imported_at`,(convert((case when (`m`.`parsing_status` = ('FAILED' collate utf8mb4_unicode_ci)) then 'IMPORT_FAILED' when (`s`.`id` is null) then 'IMPORTED' when ((`s`.`verification_status` = ('FAIL' collate utf8mb4_unicode_ci)) and (`s`.`balance_match` = ('Failed' collate utf8mb4_unicode_ci))) then 'FLAGGED' when (`s`.`verification_status` = ('FAIL' collate utf8mb4_unicode_ci)) then 'VERIFICATION_FAILED' when ((`s`.`verification_status` = ('PASS' collate utf8mb4_unicode_ci)) and (`s`.`balance_match` = ('Failed' collate utf8mb4_unicode_ci))) then 'VERIFIED_WITH_WARNINGS' when (`s`.`verification_status` = ('PASS' collate utf8mb4_unicode_ci)) then 'VERIFIED' else 'IMPORTED' end) using utf8mb4) collate utf8mb4_unicode_ci) AS `status`,(convert((case when (`s`.`id` is not null) then 'PROCESSED' else 'IMPORTED' end) using utf8mb4) collate utf8mb4_unicode_ci) AS `processing_status`,`s`.`verification_status` AS `verification_status`,`s`.`verification_reason` AS `verification_reason`,`s`.`balance_match` AS `balance_match`,`s`.`duplicate_count` AS `duplicate_count`,`s`.`missing_days_detected` AS `missing_days_detected`,`s`.`gap_related_balance_changes` AS `gap_related_balance_changes`,`s`.`created_at` AS `processed_at`,`s`.`balance_diff_changes` AS `balance_diff_changes`,`s`.`balance_diff_change_ratio` AS `balance_diff_change_ratio`,`s`.`calculated_closing_balance` AS `calculated_closing_balance`,`m`.`last_balance` AS `stmt_closing_balance`,`m`.`meta_title` AS `meta_title`,`m`.`meta_author` AS `meta_author`,`m`.`meta_producer` AS `meta_producer`,`m`.`meta_created_at` AS `meta_created_at`,`m`.`meta_modified_at` AS `meta_modified_at` from (`metadata` `m` left join `summary` `s` on((`m`.`run_id` = `s`.`run_id`))) order by `m`.`created_at` desc
