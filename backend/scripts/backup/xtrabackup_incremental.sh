@@ -14,11 +14,12 @@ FULL_BACKUP_DIR="$BACKUP_BASE_DIR/full"
 INCREMENTAL_BACKUP_DIR="$BACKUP_BASE_DIR/incremental"
 LOG_DIR="$PROJECT_ROOT/logs"
 
-# Load database credentials
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    source "$PROJECT_ROOT/.env"
+# Load backup credentials from separate config file
+if [ -f "$PROJECT_ROOT/.env.xtrabackup" ]; then
+    source "$PROJECT_ROOT/.env.xtrabackup"
 else
-    echo "Error: .env file not found at $PROJECT_ROOT/.env"
+    echo "Error: .env.xtrabackup file not found at $PROJECT_ROOT/.env.xtrabackup"
+    echo "Please create .env.xtrabackup with backup credentials"
     exit 1
 fi
 
@@ -75,25 +76,51 @@ if [ ! -d "$BASE_DIR" ]; then
 fi
 
 echo "Creating incremental backup to: $BACKUP_DIR" | tee -a "$LOG_FILE"
-echo "Using credentials from .env: ${DB_HOST}:${DB_PORT} as ${DB_USER}" | tee -a "$LOG_FILE"
+echo "Using credentials from .env.xtrabackup: ${BACKUP_DB_HOST}:${BACKUP_DB_PORT} as ${BACKUP_DB_USER}" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
+
+# Prompt for backup description (optional)
+echo "Please describe what changes are in this incremental backup (or press Enter to skip):"
+echo "Examples:"
+echo "  - Daily backup after processing new statements"
+echo "  - After populating header_rows_count"
+echo "  - Applied schema update for fee_raw column"
+echo "  - Before major data migration"
+echo ""
+read -p "Description: " BACKUP_DESCRIPTION
+
+# Save description if provided
+if [ -n "$BACKUP_DESCRIPTION" ]; then
+    echo "📝 Backup description: $BACKUP_DESCRIPTION" | tee -a "$LOG_FILE"
+    echo ""
+fi
 
 # Perform incremental backup (needs sudo to access MySQL data directory)
 sudo xtrabackup --backup \
-    --host="${DB_HOST}" \
-    --port="${DB_PORT}" \
-    --user="${DB_USER}" \
-    --password="${DB_PASSWORD}" \
-    --databases="${DB_NAME}" \
+    --host="${BACKUP_DB_HOST}" \
+    --port="${BACKUP_DB_PORT}" \
+    --user="${BACKUP_DB_USER}" \
+    --password="${BACKUP_DB_PASSWORD}" \
+    --databases="${BACKUP_DB_NAME}" \
     --target-dir="$BACKUP_DIR" \
     --incremental-basedir="$BASE_DIR" \
-    --parallel=4 \
+    --parallel=${BACKUP_PARALLEL_THREADS:-4} \
     --compress \
-    --compress-threads=4 2>&1 | tee -a "$LOG_FILE"
+    --compress-threads=${BACKUP_COMPRESS_THREADS:-4} 2>&1 | tee -a "$LOG_FILE"
 
 if [ ${PIPESTATUS[0]} -eq 0 ]; then
     # Fix ownership of backup directory (created by sudo)
     sudo chown -R $USER:$USER "$BACKUP_DIR"
+
+    # Save backup description to notes file
+    if [ -n "$BACKUP_DESCRIPTION" ]; then
+        echo "$BACKUP_DESCRIPTION" > "$BACKUP_DIR/BACKUP_NOTES.txt"
+    fi
+
+    # Generate backup manifest
+    echo "" | tee -a "$LOG_FILE"
+    echo "Generating backup manifest..." | tee -a "$LOG_FILE"
+    "$SCRIPT_DIR/generate_backup_manifest.sh" "$BACKUP_DIR" "incremental" 2>&1 | tee -a "$LOG_FILE"
 
     echo "" | tee -a "$LOG_FILE"
     echo "========================================" | tee -a "$LOG_FILE"
@@ -106,10 +133,11 @@ if [ ${PIPESTATUS[0]} -eq 0 ]; then
     # Update base directory for next incremental
     echo "$BACKUP_DIR" > "$BACKUP_BASE_DIR/base_dir.txt"
 
-    # Clean up old incremental backups (keep last 7 days)
+    # Clean up old incremental backups (use retention setting from config)
     cd "$INCREMENTAL_BACKUP_DIR"
-    find . -maxdepth 1 -type d -name "inc_*" -mtime +7 -exec rm -rf {} \;
-    echo "Cleaned up incremental backups older than 7 days" | tee -a "$LOG_FILE"
+    DAYS=${INCREMENTAL_RETENTION_DAYS:-7}
+    find . -maxdepth 1 -type d -name "inc_*" -mtime +$DAYS -exec rm -rf {} \;
+    echo "Cleaned up incremental backups older than $DAYS days" | tee -a "$LOG_FILE"
 
     exit 0
 else

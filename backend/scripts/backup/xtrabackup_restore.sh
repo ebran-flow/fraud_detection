@@ -15,11 +15,12 @@ INCREMENTAL_BACKUP_DIR="$BACKUP_BASE_DIR/incremental"
 RESTORE_DIR="/tmp/xtrabackup_restore_$(date +%Y%m%d_%H%M%S)"
 LOG_DIR="$PROJECT_ROOT/logs"
 
-# Load database credentials
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    source "$PROJECT_ROOT/.env"
+# Load backup credentials from separate config file
+if [ -f "$PROJECT_ROOT/.env.xtrabackup" ]; then
+    source "$PROJECT_ROOT/.env.xtrabackup"
 else
-    echo "Error: .env file not found at $PROJECT_ROOT/.env"
+    echo "Error: .env.xtrabackup file not found at $PROJECT_ROOT/.env.xtrabackup"
+    echo "Please create .env.xtrabackup with backup credentials"
     exit 1
 fi
 
@@ -138,15 +139,15 @@ fi
 
 # Step 4: Stop MySQL
 echo "" | tee -a "$LOG_FILE"
-echo "Step 4: Stopping MySQL container..." | tee -a "$LOG_FILE"
-docker stop mysql 2>&1 | tee -a "$LOG_FILE"
+echo "Step 4: Stopping MySQL service..." | tee -a "$LOG_FILE"
+sudo systemctl stop mysql 2>&1 | tee -a "$LOG_FILE"
 sleep 5
 
 # Step 5: Backup current data directory
 echo "" | tee -a "$LOG_FILE"
 echo "Step 5: Backing up current data directory..." | tee -a "$LOG_FILE"
-MYSQL_DATA_DIR="/var/lib/docker/volumes/docker_config_dbdata/_data"
-BACKUP_DATA_DIR="${MYSQL_DATA_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+MYSQL_DATA_DIR="/var/lib/mysql"
+BACKUP_DATA_DIR="/var/lib/mysql_backup_$(date +%Y%m%d_%H%M%S)"
 
 if [ -d "$MYSQL_DATA_DIR" ]; then
     sudo mv "$MYSQL_DATA_DIR" "$BACKUP_DATA_DIR" | tee -a "$LOG_FILE"
@@ -165,18 +166,19 @@ sudo xtrabackup --copy-back --target-dir="$RESTORE_DIR" --datadir="$MYSQL_DATA_D
 # Step 7: Fix permissions
 echo "" | tee -a "$LOG_FILE"
 echo "Step 7: Fixing permissions..." | tee -a "$LOG_FILE"
-sudo chown -R 999:999 "$MYSQL_DATA_DIR"
+sudo chown -R mysql:mysql "$MYSQL_DATA_DIR"
 
 # Step 8: Start MySQL
 echo "" | tee -a "$LOG_FILE"
 echo "Step 8: Starting MySQL service..." | tee -a "$LOG_FILE"
 sudo systemctl start mysql 2>&1 | tee -a "$LOG_FILE"
+sleep 3
 
 # Wait for MySQL to be ready
 echo "Waiting for MySQL to be ready..." | tee -a "$LOG_FILE"
-echo "Using credentials from .env: ${DB_HOST}:${DB_PORT} as ${DB_USER}" | tee -a "$LOG_FILE"
+echo "Using credentials from .env.xtrabackup: ${BACKUP_DB_HOST}:${BACKUP_DB_PORT} as ${BACKUP_DB_USER}" | tee -a "$LOG_FILE"
 for i in {1..30}; do
-    if mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" &> /dev/null; then
+    if mysql -h "${BACKUP_DB_HOST}" -P "${BACKUP_DB_PORT}" -u "${BACKUP_DB_USER}" -p"${BACKUP_DB_PASSWORD}" -e "SELECT 1" &> /dev/null; then
         echo "MySQL is ready!" | tee -a "$LOG_FILE"
         break
     fi
@@ -187,7 +189,7 @@ done
 # Step 9: Verify database
 echo "" | tee -a "$LOG_FILE"
 echo "Step 9: Verifying database..." | tee -a "$LOG_FILE"
-mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" "${DB_NAME}" -e "
+mysql -h "${BACKUP_DB_HOST}" -P "${BACKUP_DB_PORT}" -u "${BACKUP_DB_USER}" -p"${BACKUP_DB_PASSWORD}" "${BACKUP_DB_NAME}" -e "
     SELECT 'metadata' as table_name, COUNT(*) as rows FROM metadata
     UNION ALL
     SELECT 'summary', COUNT(*) FROM summary
