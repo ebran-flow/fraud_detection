@@ -7,28 +7,30 @@
 set -euo pipefail
 
 echo "========================================================================"
-echo "Create fraud_detection User on LOCAL MySQL 8.0"
+echo "Create fraud_detection User on LOCAL MySQL"
 echo "========================================================================"
 echo ""
 
-MYSQL_HOST="127.0.0.1"
-MYSQL_PORT="3306"
-MYSQL_USER="root"
-MYSQL_PASSWORD="password"
+# Load credentials from .env
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+else
+    echo "Error: .env file not found at $SCRIPT_DIR/.env"
+    exit 1
+fi
 
-NEW_USER="fraud_user"
-NEW_PASSWORD="fraud_password"
-
-echo "Creating user: $NEW_USER"
-echo "Database: fraud_detection"
-echo "Host: 127.0.0.1:3306 (Local MySQL 8.0)"
+echo "Creating user from .env configuration:"
+echo "  Host: ${DB_HOST}:${DB_PORT}"
+echo "  User: ${DB_USER}"
+echo "  Database: ${DB_NAME}"
 echo ""
 
-# Create user and grant privileges
-mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" <<EOF
+# Create user and grant privileges (connect as root with password from .env)
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u root -p"${DB_PASSWORD}" <<EOF
 -- Create user for both localhost and 127.0.0.1
-CREATE USER IF NOT EXISTS '$NEW_USER'@'localhost' IDENTIFIED BY '$NEW_PASSWORD';
-CREATE USER IF NOT EXISTS '$NEW_USER'@'127.0.0.1' IDENTIFIED BY '$NEW_PASSWORD';
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
+CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
 
 -- Grant all privileges EXCEPT DROP on fraud_detection database
 GRANT SELECT, INSERT, UPDATE, DELETE,
@@ -36,31 +38,32 @@ GRANT SELECT, INSERT, UPDATE, DELETE,
       CREATE VIEW, SHOW VIEW,
       CREATE ROUTINE, ALTER ROUTINE, EXECUTE,
       REFERENCES, TRIGGER
-ON fraud_detection.* TO '$NEW_USER'@'localhost';
+ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 
 GRANT SELECT, INSERT, UPDATE, DELETE,
       CREATE, ALTER, INDEX,
       CREATE VIEW, SHOW VIEW,
       CREATE ROUTINE, ALTER ROUTINE, EXECUTE,
       REFERENCES, TRIGGER
-ON fraud_detection.* TO '$NEW_USER'@'127.0.0.1';
+ON ${DB_NAME}.* TO '${DB_USER}'@'127.0.0.1';
 
 -- Flush privileges
 FLUSH PRIVILEGES;
 
 -- Show user privileges
-SHOW GRANTS FOR '$NEW_USER'@'localhost';
+SHOW GRANTS FOR '${DB_USER}'@'localhost';
 EOF
 
 echo ""
 echo "========================================================================"
-echo "✅ User Created on Local MySQL 8.0!"
+echo "✅ User Created from .env!"
 echo "========================================================================"
 echo ""
-echo "User: $NEW_USER"
-echo "Password: $NEW_PASSWORD"
-echo "Host: 127.0.0.1 or localhost"
-echo "Port: 3306"
+echo "User: ${DB_USER}"
+echo "Password: ${DB_PASSWORD}"
+echo "Host: ${DB_HOST}"
+echo "Port: ${DB_PORT}"
+echo "Database: ${DB_NAME}"
 echo ""
 
 exit 0

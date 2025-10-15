@@ -167,21 +167,16 @@ echo "" | tee -a "$LOG_FILE"
 echo "Step 7: Fixing permissions..." | tee -a "$LOG_FILE"
 sudo chown -R 999:999 "$MYSQL_DATA_DIR"
 
-# MySQL connection settings for LOCAL MySQL 8.0
-MYSQL_HOST="127.0.0.1"
-MYSQL_PORT="3306"
-MYSQL_USER="root"
-MYSQL_PASSWORD="password"
-
 # Step 8: Start MySQL
 echo "" | tee -a "$LOG_FILE"
-echo "Step 8: Starting MySQL container..." | tee -a "$LOG_FILE"
-docker start mysql 2>&1 | tee -a "$LOG_FILE"
+echo "Step 8: Starting MySQL service..." | tee -a "$LOG_FILE"
+sudo systemctl start mysql 2>&1 | tee -a "$LOG_FILE"
 
 # Wait for MySQL to be ready
 echo "Waiting for MySQL to be ready..." | tee -a "$LOG_FILE"
+echo "Using credentials from .env: ${DB_HOST}:${DB_PORT} as ${DB_USER}" | tee -a "$LOG_FILE"
 for i in {1..30}; do
-    if mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1" &> /dev/null; then
+    if mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" &> /dev/null; then
         echo "MySQL is ready!" | tee -a "$LOG_FILE"
         break
     fi
@@ -192,7 +187,7 @@ done
 # Step 9: Verify database
 echo "" | tee -a "$LOG_FILE"
 echo "Step 9: Verifying database..." | tee -a "$LOG_FILE"
-mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" fraud_detection -e "
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" "${DB_NAME}" -e "
     SELECT 'metadata' as table_name, COUNT(*) as rows FROM metadata
     UNION ALL
     SELECT 'summary', COUNT(*) FROM summary

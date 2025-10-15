@@ -71,14 +71,29 @@ echo "✅ Backup directories created: $BACKUP_DIR"
 # Step 7: Test XtraBackup
 echo ""
 echo "Step 7: Testing XtraBackup connection..."
-echo "Please enter MySQL root password:"
+
+# Load credentials from .env
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+    echo "Using credentials from .env:"
+    echo "  Host: ${DB_HOST}:${DB_PORT}"
+    echo "  User: ${DB_USER}"
+    echo "  Database: ${DB_NAME}"
+else
+    echo "Error: .env file not found at $SCRIPT_DIR/.env"
+    exit 1
+fi
 
 su - $ACTUAL_USER -c "
-    read -sp 'MySQL root password: ' MYSQL_PASSWORD
-    echo ''
+    # Source .env in subshell
+    source $SCRIPT_DIR/.env
+
     xtrabackup --backup \
-        --user=root \
-        --password=\"\password\" \
+        --host=\"\${DB_HOST}\" \
+        --port=\"\${DB_PORT}\" \
+        --user=\"\${DB_USER}\" \
+        --password=\"\${DB_PASSWORD}\" \
         --target-dir=/tmp/xtrabackup_test \
         &> /tmp/xtrabackup_test.log
 

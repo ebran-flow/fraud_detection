@@ -47,17 +47,14 @@ fi
 XTRABACKUP_VERSION=$(xtrabackup --version 2>&1 | grep -oP 'xtrabackup version \K[0-9.]+')
 echo "XtraBackup version: $XTRABACKUP_VERSION" | tee -a "$LOG_FILE"
 
-# MySQL connection settings for LOCAL MySQL 8.0
-MYSQL_HOST="127.0.0.1"
-MYSQL_PORT="3306"
-MYSQL_USER="root"
-MYSQL_PASSWORD="password"
-
-# Check if MySQL is accessible
-if ! mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1" &> /dev/null; then
+# Check if MySQL is accessible (using credentials from .env)
+if ! mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" &> /dev/null; then
     echo "Error: Cannot connect to MySQL database" | tee -a "$LOG_FILE"
+    echo "Host: ${DB_HOST}:${DB_PORT}, User: ${DB_USER}" | tee -a "$LOG_FILE"
     exit 1
 fi
+
+echo "Connected to MySQL: ${DB_HOST}:${DB_PORT} as ${DB_USER}" | tee -a "$LOG_FILE"
 
 # Perform full backup
 echo "Creating full backup to: $BACKUP_DIR" | tee -a "$LOG_FILE"
@@ -65,11 +62,11 @@ echo "" | tee -a "$LOG_FILE"
 
 # XtraBackup needs sudo to access MySQL data directory
 sudo xtrabackup --backup \
-    --host="$MYSQL_HOST" \
-    --port="$MYSQL_PORT" \
-    --user="$MYSQL_USER" \
-    --password="$MYSQL_PASSWORD" \
-    --databases="fraud_detection" \
+    --host="${DB_HOST}" \
+    --port="${DB_PORT}" \
+    --user="${DB_USER}" \
+    --password="${DB_PASSWORD}" \
+    --databases="${DB_NAME}" \
     --target-dir="$BACKUP_DIR" \
     --parallel=4 \
     --compress \

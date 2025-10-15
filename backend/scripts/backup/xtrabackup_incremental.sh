@@ -75,21 +75,16 @@ if [ ! -d "$BASE_DIR" ]; then
 fi
 
 echo "Creating incremental backup to: $BACKUP_DIR" | tee -a "$LOG_FILE"
+echo "Using credentials from .env: ${DB_HOST}:${DB_PORT} as ${DB_USER}" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
-
-# MySQL connection settings for LOCAL MySQL 8.0
-MYSQL_HOST="127.0.0.1"
-MYSQL_PORT="3306"
-MYSQL_USER="root"
-MYSQL_PASSWORD="password"
 
 # Perform incremental backup (needs sudo to access MySQL data directory)
 sudo xtrabackup --backup \
-    --host="$MYSQL_HOST" \
-    --port="$MYSQL_PORT" \
-    --user="$MYSQL_USER" \
-    --password="$MYSQL_PASSWORD" \
-    --databases="fraud_detection" \
+    --host="${DB_HOST}" \
+    --port="${DB_PORT}" \
+    --user="${DB_USER}" \
+    --password="${DB_PASSWORD}" \
+    --databases="${DB_NAME}" \
     --target-dir="$BACKUP_DIR" \
     --incremental-basedir="$BASE_DIR" \
     --parallel=4 \
