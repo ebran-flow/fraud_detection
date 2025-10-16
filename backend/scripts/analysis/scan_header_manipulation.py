@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Scan suspicious format_2 statements for header row manipulation
-Checks if any page has MORE than 1 header row (indicates PDF editing)
-Outputs results to JSON file for manual verification before database update
+Scan format_2 statements for header row manipulation
+Checks for:
+1. Pages with header_rows != 1 (either 0 or >1)
+2. Headers not at the first content line (after blank lines/page numbers)
+Stores manipulation count in header_row_manipulation_count column
 """
 import os
 import sys
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '3307')
+DB_PORT = os.getenv('DB_PORT', '3306')
 DB_USER = os.getenv('DB_USER', 'root')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_NAME = os.getenv('DB_NAME', 'fraud_detection')
@@ -68,11 +70,26 @@ def is_page_number(text: str) -> bool:
         return False
 
 
+def find_first_content_line(lines: list) -> int:
+    """
+    Find the index of the first line that contains actual content
+    (not blank, not just a page number)
+
+    Returns: index of first content line, or 0 if none found
+    """
+    for idx, line in enumerate(lines):
+        line_stripped = line.strip()
+        if line_stripped and not is_page_number(line_stripped):
+            return idx
+    return 0
+
+
 def check_pdf_for_manipulation(pdf_path: str) -> tuple:
     """
-    Scan PDF and check for header manipulation:
-    1. Any page with MORE than 1 header row
-    2. Any page where header is NOT the first row (header in middle of data = manipulation)
+    Scan PDF and check for header manipulation (Format_2 only):
+    1. Any page where header_rows != 1 (either 0 or >1)
+    2. Any page where header is NOT the first content row (skips blank lines and page numbers)
+       - Header in middle of data = manipulation
 
     Uses pypdfium2 (32x faster than pdfplumber with same accuracy)
 
@@ -107,15 +124,17 @@ def check_pdf_for_manipulation(pdf_path: str) -> tuple:
 
             headers_per_page.append(page_header_count)
 
-            # Check for manipulation on this page
-            if page_header_count > 1:
+            # Check for manipulation on this page (Format_2 logic)
+            # Flag if header_rows != 1 (either 0 or >1)
+            if page_header_count == 0:
+                bad_pages[page_index] = f"No header row found"
+            elif page_header_count > 1:
                 # Multiple headers on same page = manipulation
                 bad_pages[page_index] = f"{page_header_count} headers (positions: {header_positions})"
             elif page_index > 1 and page_header_count == 1:
-                # For pages 2+, header should be at line 0, OR at line 1 if line 0 is a page number
-                expected_position = 0
-                if len(lines) > 0 and is_page_number(lines[0]):
-                    expected_position = 1  # Allow header at line 1 if line 0 is page number
+                # For pages 2+, header should be at the first content line
+                # (skip blank lines and page numbers)
+                expected_position = find_first_content_line(lines)
 
                 if header_positions[0] > expected_position:
                     # Header NOT at expected position = manipulation
@@ -191,9 +210,9 @@ def scan_suspicious_statements():
             logger.info(f"Found {total} statements with balance_match=Success (TEST MODE)")
         else:
             logger.info(f"Found {total} format_2 UATL statements")
-        logger.info("Scanning for pages with MULTIPLE header rows (indicates manipulation)...")
+        logger.info("Scanning for header row manipulation (0 headers, >1 headers, or misplaced headers)...")
         logger.info("Results will be saved to header_manipulation_results.json")
-        logger.info(f"Estimated duration: {total/2/60:.1f} minutes at ~2 statements/sec")
+        logger.info(f"Estimated duration: {total/10/60:.1f} minutes at ~10 statements/sec")
         logger.info("")
 
         manipulated_statements = []
@@ -339,8 +358,23 @@ def scan_suspicious_statements():
         logger.info(f"Results saved to: {output_file}")
         logger.info("=" * 80)
         logger.info("")
-        logger.info("To update database with these results, review the JSON file and run:")
-        logger.info("  python apply_header_manipulation_results.py")
+
+        # Update database with manipulation counts
+        logger.info("Updating database with header_row_manipulation_count...")
+        update_count = 0
+        for result_entry in all_results:
+            run_id = result_entry['run_id']
+            manipulation_count = result_entry['manipulated_pages_count']
+
+            conn.execute(text("""
+                UPDATE metadata
+                SET header_row_manipulation_count = :manipulation_count
+                WHERE run_id = :run_id
+            """), {'manipulation_count': manipulation_count, 'run_id': run_id})
+            update_count += 1
+
+        conn.commit()
+        logger.info(f"✅ Updated {update_count} records in database")
         logger.info("")
 
 
