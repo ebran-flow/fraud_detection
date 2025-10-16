@@ -50,12 +50,12 @@ def calculate_implicit_fees_format1(amount: float, description: str,
     return additional_fee
 
 
-def detect_uses_implicit_cashback(transactions: list, max_test: int = 5) -> bool:
+def detect_uses_implicit_cashback(transactions: list) -> bool:
     """
     Detect if statement applies implicit 4% cashback on Merchant Payment Other Single Step.
 
     Some Airtel statements don't apply the 4% cashback inline - it's handled separately
-    or in commission wallets. This function tests the first few merchant payment transactions
+    or in commission wallets. This function tests ALL merchant payment transactions
     to determine the statement's behavior.
 
     Args:
@@ -64,7 +64,6 @@ def detect_uses_implicit_cashback(transactions: list, max_test: int = 5) -> bool
                      - fee: float
                      - balance: float (stated balance)
                      - description: str
-        max_test: Maximum number of merchant payment transactions to test
 
     Returns:
         True if implicit cashback should be applied, False otherwise
@@ -110,29 +109,31 @@ def detect_uses_implicit_cashback(transactions: list, max_test: int = 5) -> bool
         # If both are similar, don't count it
 
         merchant_txns_tested += 1
-        if merchant_txns_tested >= max_test:
-            break
-
         prev_balance = stated_balance
 
-    # Need at least 2 test transactions for reliable detection
-    if merchant_txns_tested < 2:
-        logger.warning(f"Only {merchant_txns_tested} merchant payment transactions found - defaulting to NO implicit fees")
+    # Simple majority voting: if more transactions use implicit cashback, enable it
+    # Otherwise, default to disabled
+    if merchant_txns_tested == 0:
+        logger.debug(f"No merchant payment transactions found - defaulting to NO implicit cashback")
         return False
 
-    # Majority vote
+    if votes_for_implicit + votes_against_implicit == 0:
+        logger.debug(f"No clear votes for/against implicit cashback - defaulting to NO implicit cashback")
+        return False
+
+    # Simple majority: enable if more votes FOR than AGAINST
     uses_implicit = votes_for_implicit > votes_against_implicit
-    logger.info(f"Implicit cashback detection: {votes_for_implicit} for, {votes_against_implicit} against -> {'ENABLED' if uses_implicit else 'DISABLED'}")
+    logger.info(f"Implicit cashback detection: {votes_for_implicit} for, {votes_against_implicit} against (tested {merchant_txns_tested} txns) -> {'ENABLED' if uses_implicit else 'DISABLED'}")
 
     return uses_implicit
 
 
-def detect_uses_implicit_ind02_commission(transactions: list, max_test: int = 5) -> bool:
+def detect_uses_implicit_ind02_commission(transactions: list) -> bool:
     """
     Detect if statement applies implicit 0.5% commission on IND02 transactions.
 
     Some Airtel statements don't apply the 0.5% commission inline - it's handled separately
-    or in commission wallets. This function tests the first few IND02 transactions
+    or in commission wallets. This function tests ALL IND02 transactions
     to determine the statement's behavior.
 
     Args:
@@ -141,7 +142,6 @@ def detect_uses_implicit_ind02_commission(transactions: list, max_test: int = 5)
                      - fee: float
                      - balance: float (stated balance)
                      - description: str
-        max_test: Maximum number of IND02 transactions to test
 
     Returns:
         True if implicit commission should be applied, False otherwise
@@ -187,19 +187,21 @@ def detect_uses_implicit_ind02_commission(transactions: list, max_test: int = 5)
         # If both are similar, don't count it
 
         ind02_txns_tested += 1
-        if ind02_txns_tested >= max_test:
-            break
-
         prev_balance = stated_balance
 
-    # Need at least 2 test transactions for reliable detection
-    if ind02_txns_tested < 2:
-        logger.warning(f"Only {ind02_txns_tested} IND02 transactions found - defaulting to NO implicit commission")
+    # Simple majority voting: if more transactions use implicit commission, enable it
+    # Otherwise, default to disabled
+    if ind02_txns_tested == 0:
+        logger.debug(f"No IND02 transactions found - defaulting to NO implicit commission")
         return False
 
-    # Majority vote
+    if votes_for_implicit + votes_against_implicit == 0:
+        logger.debug(f"No clear votes for/against implicit IND02 commission - defaulting to NO implicit commission")
+        return False
+
+    # Simple majority: enable if more votes FOR than AGAINST
     uses_implicit = votes_for_implicit > votes_against_implicit
-    logger.info(f"Implicit IND02 commission detection: {votes_for_implicit} for, {votes_against_implicit} against -> {'ENABLED' if uses_implicit else 'DISABLED'}")
+    logger.info(f"Implicit IND02 commission detection: {votes_for_implicit} for, {votes_against_implicit} against (tested {ind02_txns_tested} txns) -> {'ENABLED' if uses_implicit else 'DISABLED'}")
 
     return uses_implicit
 

@@ -131,9 +131,9 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
                     'description': str(row.get('description', ''))
                 })
 
-            # Run detection
-            uses_implicit_cashback = detect_uses_implicit_cashback(txns, max_test=5)
-            uses_implicit_ind02_commission = detect_uses_implicit_ind02_commission(txns, max_test=5)
+            # Run detection (tests ALL merchant payment and IND02 transactions)
+            uses_implicit_cashback = detect_uses_implicit_cashback(txns)
+            uses_implicit_ind02_commission = detect_uses_implicit_ind02_commission(txns)
             logger.info(f"Implicit fee detection: cashback={uses_implicit_cashback}, ind02_commission={uses_implicit_ind02_commission}")
 
         # Calculate running balance and differences
