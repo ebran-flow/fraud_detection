@@ -181,7 +181,7 @@ def parse_uatl_pdf(pdf_path: str, run_id: str) -> Tuple[List[Dict[str, Any]], Di
             'last_balance': float(df.iloc[-1]['balance']) if len(df) > 0 else None,
             # Data quality tracking (similar to duplicate_count)
             'quality_issues_count': quality_issues_count,
-            'header_rows_count': header_rows_count,  # Header rows in data (manipulation indicator)
+            'header_row_manipulation_count': header_rows_count,  # Header rows in data (manipulation indicator)
             # Summary fields extracted from Airtel Format 1 PDFs
             'summary_email_address': summary_email_address,
             'summary_customer_name': summary_customer_name,

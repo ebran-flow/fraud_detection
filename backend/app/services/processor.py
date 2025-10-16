@@ -24,7 +24,9 @@ from .balance_utils import (
     apply_transaction_format1_csv,
     apply_transaction_format2,
     apply_transaction_mtn,
-    calculate_total_credits_debits
+    calculate_total_credits_debits,
+    detect_uses_implicit_cashback,
+    detect_uses_implicit_ind02_commission
 )
 
 logger = logging.getLogger(__name__)
@@ -114,8 +116,29 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
         # Detect special transactions
         df = detect_special_transactions(df)
 
+        # Detect implicit fee/commission behavior for UATL (Airtel) statements
+        uses_implicit_cashback = True  # Default
+        uses_implicit_ind02_commission = True  # Default
+        if provider_code == 'UATL':
+            # Prepare transactions for detection
+            txns = []
+            for _, row in df.iterrows():
+                txns.append({
+                    'txn_id': row.get('txn_id'),
+                    'amount': float(row['amount']) if row['amount'] is not None else 0,
+                    'fee': float(row['fee']) if row['fee'] is not None else 0,
+                    'balance': float(row[balance_field]) if row[balance_field] is not None else 0,
+                    'description': str(row.get('description', ''))
+                })
+
+            # Run detection
+            uses_implicit_cashback = detect_uses_implicit_cashback(txns, max_test=5)
+            uses_implicit_ind02_commission = detect_uses_implicit_ind02_commission(txns, max_test=5)
+            logger.info(f"Implicit fee detection: cashback={uses_implicit_cashback}, ind02_commission={uses_implicit_ind02_commission}")
+
         # Calculate running balance and differences
-        df = calculate_running_balance(df, metadata.pdf_format, provider_code, balance_field)
+        df = calculate_running_balance(df, metadata.pdf_format, provider_code, balance_field,
+                                       uses_implicit_cashback, uses_implicit_ind02_commission)
 
         # Create processed statements
         processed_statements = []
@@ -152,7 +175,8 @@ def process_statement(db: Session, run_id: str) -> Dict[str, Any]:
         crud.bulk_create_processed(db, provider_code, processed_statements)
 
         # Generate summary
-        summary_data = generate_summary(df, metadata, run_id, provider_code, balance_field)
+        summary_data = generate_summary(df, metadata, run_id, provider_code, balance_field,
+                                        uses_implicit_cashback, uses_implicit_ind02_commission)
 
         # Update metadata with actual first and last balance from processed data
         if len(df) > 0:
@@ -395,7 +419,9 @@ def optimize_same_timestamp_transactions_mtn(df: pd.DataFrame, balance_field: st
     return pd.concat(optimized_groups, ignore_index=True)
 
 
-def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: str, balance_field: str) -> pd.DataFrame:
+def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: str, balance_field: str,
+                              uses_implicit_cashback: bool = True,
+                              uses_implicit_ind02_commission: bool = True) -> pd.DataFrame:
     """
     Calculate running balance and compare with statement balance
     Track balance differences and change counts
@@ -433,11 +459,14 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
     if provider_code == 'UMTN':
         opening_balance = calculate_opening_balance_mtn(first_balance, first_amount, first_txn_type, first_fee)
     elif pdf_format == 2:
-        opening_balance = calculate_opening_balance_format2(first_balance, first_amount, first_description)
+        opening_balance = calculate_opening_balance_format2(first_balance, first_amount, first_description,
+                                                            uses_implicit_cashback, uses_implicit_ind02_commission)
     elif is_format1_csv(df, pdf_format):
-        opening_balance = calculate_opening_balance_format1_csv(first_balance, first_amount, first_fee, first_description)
+        opening_balance = calculate_opening_balance_format1_csv(first_balance, first_amount, first_fee, first_description,
+                                                                uses_implicit_cashback, uses_implicit_ind02_commission)
     else:  # Format 1 PDF
-        opening_balance = calculate_opening_balance_format1_pdf(first_balance, first_amount, first_fee, first_direction, first_description)
+        opening_balance = calculate_opening_balance_format1_pdf(first_balance, first_amount, first_fee, first_direction, first_description,
+                                                                uses_implicit_cashback, uses_implicit_ind02_commission)
 
     # Calculate running balance for each transaction
     running_balance = opening_balance
@@ -489,11 +518,14 @@ def calculate_running_balance(df: pd.DataFrame, pdf_format: int, provider_code: 
             if provider_code == 'UMTN':
                 running_balance = apply_transaction_mtn(running_balance, amount, txn_type, fee)
             elif pdf_format == 2:
-                running_balance = apply_transaction_format2(running_balance, amount, description)
+                running_balance = apply_transaction_format2(running_balance, amount, description,
+                                                           uses_implicit_cashback, uses_implicit_ind02_commission)
             elif is_format1_csv(df, pdf_format):
-                running_balance = apply_transaction_format1_csv(running_balance, amount, fee, description)
+                running_balance = apply_transaction_format1_csv(running_balance, amount, fee, description,
+                                                               uses_implicit_cashback, uses_implicit_ind02_commission)
             else:  # Format 1 PDF
-                running_balance = apply_transaction_format1_pdf(running_balance, amount, fee, direction, description)
+                running_balance = apply_transaction_format1_pdf(running_balance, amount, fee, direction, description,
+                                                               uses_implicit_cashback, uses_implicit_ind02_commission)
 
             df.at[df.index[idx], 'calculated_running_balance'] = running_balance
 
@@ -560,7 +592,8 @@ def detect_gap_related_balance_changes(df: pd.DataFrame, gap_threshold_days: flo
     return missing_days_detected, gap_related_balance_changes
 
 
-def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider_code: str, balance_field: str) -> Dict[str, Any]:
+def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider_code: str, balance_field: str,
+                    uses_implicit_cashback: bool = True, uses_implicit_ind02_commission: bool = True) -> Dict[str, Any]:
     """
     Generate summary record from processed data
     Supports different balance fields per provider
@@ -631,6 +664,8 @@ def generate_summary(df: pd.DataFrame, metadata: Metadata, run_id: str, provider
         'calculated_closing_balance': calculated_closing_balance,
         'balance_diff_changes': balance_diff_changes,
         'balance_diff_change_ratio': balance_diff_change_ratio,
+        'uses_implicit_cashback': uses_implicit_cashback,
+        'uses_implicit_ind02_commission': uses_implicit_ind02_commission,
         'meta_title': metadata.meta_title,
         'meta_author': metadata.meta_author,
         'meta_producer': metadata.meta_producer,

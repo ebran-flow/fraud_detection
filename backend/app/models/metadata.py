@@ -17,7 +17,7 @@ class Metadata(Base):
     rm_name = Column(String(256))
     num_rows = Column(Integer)
     quality_issues_count = Column(Integer, default=0)
-    header_rows_count = Column(Integer, default=0)  # Number of header rows found in data (manipulation indicator)
+    header_row_manipulation_count = Column(Integer, default=0)  # Number of header rows found in data (manipulation indicator)
     parsing_status = Column(String(32), default='SUCCESS')
     parsing_error = Column(Text)
     sheet_md5 = Column(String(64))
@@ -83,7 +83,7 @@ class Metadata(Base):
             'rm_name': self.rm_name,
             'num_rows': self.num_rows,
             'quality_issues_count': self.quality_issues_count,
-            'header_rows_count': self.header_rows_count,
+            'header_row_manipulation_count': self.header_row_manipulation_count,
             'parsing_status': self.parsing_status,
             'parsing_error': self.parsing_error,
             'sheet_md5': self.sheet_md5,

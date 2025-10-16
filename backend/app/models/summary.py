@@ -34,6 +34,8 @@ class Summary(Base):
     calculated_closing_balance = Column(Numeric(18, 2))
     balance_diff_changes = Column(Integer, default=0)
     balance_diff_change_ratio = Column(Float, default=0.0)
+    uses_implicit_cashback = Column(Boolean, default=True, comment='Whether statement applies 4% cashback on Merchant Payment Other Single Step')
+    uses_implicit_ind02_commission = Column(Boolean, default=True, comment='Whether statement applies 0.5% commission on IND02 transactions')
     meta_title = Column(String(512))
     meta_author = Column(String(256))
     meta_producer = Column(String(256))
@@ -74,6 +76,8 @@ class Summary(Base):
             'calculated_closing_balance': float(self.calculated_closing_balance) if self.calculated_closing_balance else None,
             'balance_diff_changes': self.balance_diff_changes,
             'balance_diff_change_ratio': self.balance_diff_change_ratio,
+            'uses_implicit_cashback': self.uses_implicit_cashback,
+            'uses_implicit_ind02_commission': self.uses_implicit_ind02_commission,
             'meta_title': self.meta_title,
             'meta_author': self.meta_author,
             'meta_producer': self.meta_producer,

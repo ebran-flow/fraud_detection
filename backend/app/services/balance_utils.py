@@ -13,30 +13,36 @@ logger = logging.getLogger(__name__)
 # FORMAT 1 LOGIC (PDF with unsigned amounts + direction OR CSV with signed amounts)
 # ============================================================================
 
-def calculate_implicit_fees_format1(amount: float, description: str) -> float:
+def calculate_implicit_fees_format1(amount: float, description: str,
+                                   apply_cashback: bool = True,
+                                   apply_ind02_commission: bool = True) -> float:
     """
     Calculate implicit fees and cashbacks for Format 1.
 
     Format 1 specifics:
-    - IND02 transactions have 0.5% commission not shown in fee field
-    - Merchant Payment Other Single Step has 4% cashback
+    - IND02 transactions have 0.5% commission not shown in fee field (if apply_ind02_commission=True)
+    - Merchant Payment Other Single Step has 4% cashback (if apply_cashback=True)
 
     Args:
         amount: Transaction amount (signed for CSV, unsigned for PDF)
         description: Transaction description
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment Other Single Step
+                       (Some statements don't apply this inline - it's handled separately)
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02 transactions
+                               (Some statements have explicit fees instead of implicit commission)
 
     Returns:
         Additional fee/cashback (positive = fee to deduct, negative = cashback to add)
     """
     additional_fee = 0.0
 
-    # IND02: 0.5% commission
-    if description and 'IND02' in description.upper() and 'IND01' not in description.upper():
+    # IND02: 0.5% commission (conditional)
+    if apply_ind02_commission and description and 'IND02' in description.upper() and 'IND01' not in description.upper():
         additional_fee += abs(amount) * 0.005
         logger.debug(f"IND02 commission: {abs(amount) * 0.005:.2f}")
 
-    # Merchant Payment Other Single Step: 4% cashback
-    if description and 'MERCHANT PAYMENT OTHER SINGLE STEP' in description.upper():
+    # Merchant Payment Other Single Step: 4% cashback (conditional)
+    if apply_cashback and description and 'MERCHANT PAYMENT OTHER SINGLE STEP' in description.upper():
         cashback = abs(amount) * 0.04
         additional_fee -= cashback
         logger.debug(f"Merchant Payment cashback: {cashback:.2f}")
@@ -44,9 +50,165 @@ def calculate_implicit_fees_format1(amount: float, description: str) -> float:
     return additional_fee
 
 
+def detect_uses_implicit_cashback(transactions: list, max_test: int = 5) -> bool:
+    """
+    Detect if statement applies implicit 4% cashback on Merchant Payment Other Single Step.
+
+    Some Airtel statements don't apply the 4% cashback inline - it's handled separately
+    or in commission wallets. This function tests the first few merchant payment transactions
+    to determine the statement's behavior.
+
+    Args:
+        transactions: List of transaction dicts with keys:
+                     - amount: float (signed)
+                     - fee: float
+                     - balance: float (stated balance)
+                     - description: str
+        max_test: Maximum number of merchant payment transactions to test
+
+    Returns:
+        True if implicit cashback should be applied, False otherwise
+    """
+    merchant_txns_tested = 0
+    votes_for_implicit = 0
+    votes_against_implicit = 0
+
+    prev_balance = None
+    for txn in transactions:
+        if prev_balance is None:
+            prev_balance = txn.get('balance')
+            continue
+
+        # Only test on Merchant Payment Other Single Step transactions
+        description = txn.get('description', '')
+        if 'MERCHANT PAYMENT OTHER SINGLE STEP' not in description.upper():
+            prev_balance = txn.get('balance')
+            continue
+
+        amount = float(txn.get('amount', 0))
+        fee = float(txn.get('fee', 0))
+        stated_balance = float(txn.get('balance', 0))
+
+        # Calculate WITH 4% cashback (current logic)
+        cashback = abs(amount) * 0.04
+        # For format_2: balance + amount - (-cashback) = balance + amount + cashback
+        calc_with_cashback = prev_balance + amount - (-cashback)
+
+        # Calculate WITHOUT cashback
+        calc_without_cashback = prev_balance + amount
+
+        # Check which matches better (allow 0.01 tolerance for float comparison)
+        diff_with = abs(stated_balance - calc_with_cashback)
+        diff_without = abs(stated_balance - calc_without_cashback)
+
+        if diff_with < diff_without - 0.01:  # Clearly better with cashback
+            votes_for_implicit += 1
+            logger.debug(f"TXN {txn.get('txn_id', '?')}: WITH cashback matches better (diff: {diff_with:.2f} vs {diff_without:.2f})")
+        elif diff_without < diff_with - 0.01:  # Clearly better without cashback
+            votes_against_implicit += 1
+            logger.debug(f"TXN {txn.get('txn_id', '?')}: WITHOUT cashback matches better (diff: {diff_without:.2f} vs {diff_with:.2f})")
+        # If both are similar, don't count it
+
+        merchant_txns_tested += 1
+        if merchant_txns_tested >= max_test:
+            break
+
+        prev_balance = stated_balance
+
+    # Need at least 2 test transactions for reliable detection
+    if merchant_txns_tested < 2:
+        logger.warning(f"Only {merchant_txns_tested} merchant payment transactions found - defaulting to NO implicit fees")
+        return False
+
+    # Majority vote
+    uses_implicit = votes_for_implicit > votes_against_implicit
+    logger.info(f"Implicit cashback detection: {votes_for_implicit} for, {votes_against_implicit} against -> {'ENABLED' if uses_implicit else 'DISABLED'}")
+
+    return uses_implicit
+
+
+def detect_uses_implicit_ind02_commission(transactions: list, max_test: int = 5) -> bool:
+    """
+    Detect if statement applies implicit 0.5% commission on IND02 transactions.
+
+    Some Airtel statements don't apply the 0.5% commission inline - it's handled separately
+    or in commission wallets. This function tests the first few IND02 transactions
+    to determine the statement's behavior.
+
+    Args:
+        transactions: List of transaction dicts with keys:
+                     - amount: float (signed)
+                     - fee: float
+                     - balance: float (stated balance)
+                     - description: str
+        max_test: Maximum number of IND02 transactions to test
+
+    Returns:
+        True if implicit commission should be applied, False otherwise
+    """
+    ind02_txns_tested = 0
+    votes_for_implicit = 0
+    votes_against_implicit = 0
+
+    prev_balance = None
+    for txn in transactions:
+        if prev_balance is None:
+            prev_balance = txn.get('balance')
+            continue
+
+        # Only test on IND02 transactions (exclude IND01)
+        description = txn.get('description', '')
+        if 'IND02' not in description.upper() or 'IND01' in description.upper():
+            prev_balance = txn.get('balance')
+            continue
+
+        amount = float(txn.get('amount', 0))
+        fee = float(txn.get('fee', 0))
+        stated_balance = float(txn.get('balance', 0))
+
+        # Calculate WITH 0.5% commission
+        commission = abs(amount) * 0.005
+        # Commission is a fee that reduces balance: balance + amount - commission
+        calc_with_commission = prev_balance + amount - commission
+
+        # Calculate WITHOUT commission
+        calc_without_commission = prev_balance + amount
+
+        # Check which matches better (allow 0.01 tolerance for float comparison)
+        diff_with = abs(stated_balance - calc_with_commission)
+        diff_without = abs(stated_balance - calc_without_commission)
+
+        if diff_with < diff_without - 0.01:  # Clearly better with commission
+            votes_for_implicit += 1
+            logger.debug(f"TXN {txn.get('txn_id', '?')}: WITH commission matches better (diff: {diff_with:.2f} vs {diff_without:.2f})")
+        elif diff_without < diff_with - 0.01:  # Clearly better without commission
+            votes_against_implicit += 1
+            logger.debug(f"TXN {txn.get('txn_id', '?')}: WITHOUT commission matches better (diff: {diff_without:.2f} vs {diff_with:.2f})")
+        # If both are similar, don't count it
+
+        ind02_txns_tested += 1
+        if ind02_txns_tested >= max_test:
+            break
+
+        prev_balance = stated_balance
+
+    # Need at least 2 test transactions for reliable detection
+    if ind02_txns_tested < 2:
+        logger.warning(f"Only {ind02_txns_tested} IND02 transactions found - defaulting to NO implicit commission")
+        return False
+
+    # Majority vote
+    uses_implicit = votes_for_implicit > votes_against_implicit
+    logger.info(f"Implicit IND02 commission detection: {votes_for_implicit} for, {votes_against_implicit} against -> {'ENABLED' if uses_implicit else 'DISABLED'}")
+
+    return uses_implicit
+
+
 def calculate_opening_balance_format1_pdf(first_balance: float, first_amount: float,
                                           first_fee: float, first_direction: str,
-                                          first_description: str = '') -> float:
+                                          first_description: str = '',
+                                          apply_cashback: bool = True,
+                                          apply_ind02_commission: bool = True) -> float:
     """
     Calculate opening balance for Format 1 PDF (unsigned amounts).
 
@@ -60,6 +222,8 @@ def calculate_opening_balance_format1_pdf(first_balance: float, first_amount: fl
         first_fee: Fee
         first_direction: 'credit', 'debit', 'cr', 'dr'
         first_description: Description for detecting implicit fees
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02
 
     Returns:
         Opening balance
@@ -69,7 +233,8 @@ def calculate_opening_balance_format1_pdf(first_balance: float, first_amount: fl
     first_amount = float(first_amount)
     first_fee = float(first_fee)
 
-    additional_fee = calculate_implicit_fees_format1(first_amount, first_description)
+    additional_fee = calculate_implicit_fees_format1(first_amount, first_description,
+                                                     apply_cashback, apply_ind02_commission)
 
     if direction in ['credit', 'cr']:
         return first_balance - first_amount - first_fee + additional_fee
@@ -78,7 +243,9 @@ def calculate_opening_balance_format1_pdf(first_balance: float, first_amount: fl
 
 
 def calculate_opening_balance_format1_csv(first_balance: float, first_amount: float,
-                                          first_fee: float, first_description: str = '') -> float:
+                                          first_fee: float, first_description: str = '',
+                                          apply_cashback: bool = True,
+                                          apply_ind02_commission: bool = True) -> float:
     """
     Calculate opening balance for Format 1 CSV (signed amounts).
 
@@ -91,6 +258,8 @@ def calculate_opening_balance_format1_csv(first_balance: float, first_amount: fl
         first_amount: Amount (signed)
         first_fee: Fee
         first_description: Description for detecting implicit fees
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02
 
     Returns:
         Opening balance
@@ -99,13 +268,16 @@ def calculate_opening_balance_format1_csv(first_balance: float, first_amount: fl
     first_amount = float(first_amount)
     first_fee = float(first_fee)
 
-    additional_fee = calculate_implicit_fees_format1(first_amount, first_description)
+    additional_fee = calculate_implicit_fees_format1(first_amount, first_description,
+                                                     apply_cashback, apply_ind02_commission)
 
     return first_balance - first_amount - first_fee + additional_fee
 
 
 def apply_transaction_format1_pdf(balance: float, amount: float, fee: float,
-                                  direction: str, description: str = '') -> float:
+                                  direction: str, description: str = '',
+                                  apply_cashback: bool = True,
+                                  apply_ind02_commission: bool = True) -> float:
     """
     Apply transaction to balance for Format 1 PDF (unsigned amounts).
 
@@ -119,6 +291,8 @@ def apply_transaction_format1_pdf(balance: float, amount: float, fee: float,
         fee: Fee
         direction: 'credit', 'debit', 'cr', 'dr'
         description: Description for detecting implicit fees
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02
 
     Returns:
         New balance
@@ -128,7 +302,8 @@ def apply_transaction_format1_pdf(balance: float, amount: float, fee: float,
     amount = float(amount)
     fee = float(fee)
 
-    additional_fee = calculate_implicit_fees_format1(amount, description)
+    additional_fee = calculate_implicit_fees_format1(amount, description,
+                                                     apply_cashback, apply_ind02_commission)
 
     if direction in ['credit', 'cr']:
         return balance + amount - fee - additional_fee
@@ -137,7 +312,9 @@ def apply_transaction_format1_pdf(balance: float, amount: float, fee: float,
 
 
 def apply_transaction_format1_csv(balance: float, amount: float, fee: float,
-                                  description: str = '') -> float:
+                                  description: str = '',
+                                  apply_cashback: bool = True,
+                                  apply_ind02_commission: bool = True) -> float:
     """
     Apply transaction to balance for Format 1 CSV (signed amounts).
 
@@ -150,6 +327,8 @@ def apply_transaction_format1_csv(balance: float, amount: float, fee: float,
         amount: Amount (signed)
         fee: Fee
         description: Description for detecting implicit fees
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02
 
     Returns:
         New balance
@@ -158,7 +337,8 @@ def apply_transaction_format1_csv(balance: float, amount: float, fee: float,
     amount = float(amount)
     fee = float(fee)
 
-    additional_fee = calculate_implicit_fees_format1(amount, description)
+    additional_fee = calculate_implicit_fees_format1(amount, description,
+                                                     apply_cashback, apply_ind02_commission)
 
     return balance + amount - fee - additional_fee
 
@@ -167,7 +347,10 @@ def apply_transaction_format1_csv(balance: float, amount: float, fee: float,
 # FORMAT 2 LOGIC (PDF/CSV with signed amounts, fees included)
 # ============================================================================
 
-def calculate_opening_balance_format2(first_balance: float, first_amount: float, first_description: str = '') -> float:
+def calculate_opening_balance_format2(first_balance: float, first_amount: float,
+                                      first_description: str = '',
+                                      apply_cashback: bool = True,
+                                      apply_ind02_commission: bool = True) -> float:
     """
     Calculate opening balance for Format 2 (signed amounts, fees included).
 
@@ -180,6 +363,8 @@ def calculate_opening_balance_format2(first_balance: float, first_amount: float,
         first_balance: Balance shown in first transaction
         first_amount: Amount (signed, fees included)
         first_description: Description for detecting implicit fees
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02
 
     Returns:
         Opening balance
@@ -188,14 +373,17 @@ def calculate_opening_balance_format2(first_balance: float, first_amount: float,
     first_amount = float(first_amount)
 
     # Calculate implicit fees (applies to all Airtel formats)
-    additional_fee = calculate_implicit_fees_format1(first_amount, first_description)
+    additional_fee = calculate_implicit_fees_format1(first_amount, first_description,
+                                                     apply_cashback, apply_ind02_commission)
 
     # For signed amounts: negative = debit (reduces balance), positive = credit (increases balance)
     # Additional_fee is positive for fees (reduce balance), negative for cashback (increase balance)
     return first_balance - first_amount - additional_fee
 
 
-def apply_transaction_format2(balance: float, amount: float, description: str = '') -> float:
+def apply_transaction_format2(balance: float, amount: float, description: str = '',
+                              apply_cashback: bool = True,
+                              apply_ind02_commission: bool = True) -> float:
     """
     Apply transaction to balance for Format 2 (signed amounts, fees included).
 
@@ -208,6 +396,8 @@ def apply_transaction_format2(balance: float, amount: float, description: str = 
         balance: Current balance
         amount: Amount (signed, fees included)
         description: Description for detecting implicit fees
+        apply_cashback: Whether to apply 4% cashback on Merchant Payment
+        apply_ind02_commission: Whether to apply 0.5% commission on IND02
 
     Returns:
         New balance
@@ -216,7 +406,8 @@ def apply_transaction_format2(balance: float, amount: float, description: str = 
     amount = float(amount)
 
     # Calculate implicit fees (applies to all Airtel formats)
-    additional_fee = calculate_implicit_fees_format1(amount, description)
+    additional_fee = calculate_implicit_fees_format1(amount, description,
+                                                     apply_cashback, apply_ind02_commission)
 
     # For signed amounts: negative = debit (reduces balance), positive = credit (increases balance)
     # Additional_fee is positive for fees (reduce balance), negative for cashback (increase balance)
