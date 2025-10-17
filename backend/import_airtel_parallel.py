@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from app.services.db import SessionLocal
 from app.services import crud_v2 as crud
 from app.services.parsers import get_parser
-from app.services.mapper import enrich_metadata_with_mapper
+from app.services.mapper import enrich_metadata_with_mapper  # Now uses customer_details table internally
 from app.models.metadata import Metadata
 
 # Setup logging
@@ -143,7 +143,7 @@ def process_single_statement(statement_info, existing_run_ids, dry_run=False):
             # Parse file
             raw_statements, metadata = parser(str(file_path), run_id)
 
-            # Enrich with mapper data
+            # Enrich with mapper (now uses customer_details table with CSV fallback)
             metadata = enrich_metadata_with_mapper(metadata, run_id)
 
             # Save to database

@@ -47,121 +47,259 @@ def get_customer_details(engine, cutoff_date='2025-10-10 19:07:24', max_id=30668
         pandas DataFrame with customer details
     """
     query = text("""
+        -- CTE 1: Filter statement requests early
+        WITH filtered_statements AS (
+            SELECT
+                s.id,
+                s.flow_req_id,
+                s.acc_number,
+                s.alt_acc_num,
+                s.acc_prvdr_code,
+                s.status,
+                s.object_key,
+                s.lambda_status,
+                s.created_at,
+                s.entity,
+                s.entity_id,
+                s.created_by
+            FROM partner_acc_stmt_requests s
+            WHERE s.acc_prvdr_code IN ('UMTN', 'UATL')
+                AND s.created_at <= :cutoff_date
+                AND s.id <= :max_id
+        ),
+
+        -- CTE 2: Resolve final entity (handle customer_statement intermediate)
+        final_entities AS (
+            SELECT
+                fs.id AS stmt_request_id,
+                fs.flow_req_id AS run_id,
+                fs.acc_number,
+                fs.alt_acc_num,
+                fs.acc_prvdr_code,
+                fs.status AS stmt_status,
+                fs.object_key,
+                fs.lambda_status,
+                DATE(fs.created_at) AS created_date,
+                fs.created_at,
+                fs.created_by,
+                fs.entity AS direct_entity,
+                fs.entity_id AS direct_entity_id,
+
+                -- Customer statement details
+                cs.id AS customer_statement_id,
+                cs.entity AS cs_entity,
+                cs.entity_id AS cs_entity_id,
+                cs.holder_name,
+                cs.distributor_code,
+                cs.acc_ownership,
+                cs.status AS cs_status,
+                cs.result AS cs_result,
+                cs.score AS cs_score,
+                cs.`limit` AS cs_limit,
+                cs.prev_limit AS cs_prev_limit,
+                cs.assessment_date AS cs_assessment_date,
+
+                -- Final resolved entity
+                CASE
+                    WHEN fs.entity = 'customer_statement' THEN cs.entity
+                    ELSE fs.entity
+                END AS final_entity_type,
+
+                CASE
+                    WHEN fs.entity = 'customer_statement' THEN CAST(cs.entity_id AS UNSIGNED)
+                    ELSE fs.entity_id
+                END AS final_entity_id
+
+            FROM filtered_statements fs
+            LEFT JOIN customer_statements cs
+                ON fs.entity = 'customer_statement' AND cs.id = fs.entity_id
+        ),
+
+        -- CTE 3: Get lead details only for lead entities
+        lead_details AS (
+            SELECT
+                fe.stmt_request_id,
+                l.id AS lead_id,
+                l.cust_id,
+                l.mobile_num AS lead_mobile,
+                l.biz_name AS lead_biz_name,
+                l.first_name AS lead_first_name,
+                l.last_name AS lead_last_name,
+                l.id_proof_num AS lead_id_proof,
+                l.national_id AS lead_national_id,
+                l.location AS lead_location,
+                l.territory AS lead_territory,
+                l.status AS lead_status,
+                l.profile_status AS lead_profile_status,
+                l.score_status AS lead_score_status,
+                l.type AS lead_type,
+                l.lead_date,
+                l.assessment_date AS lead_assessment_date,
+                l.onboarded_date AS lead_onboarded_date
+            FROM final_entities fe
+            INNER JOIN leads l ON fe.final_entity_type = 'lead' AND l.id = fe.final_entity_id
+        ),
+
+        -- CTE 4: Get reassessment details only for reassessment entities
+        reassessment_details AS (
+            SELECT
+                fe.stmt_request_id,
+                rr.id AS reassessment_id,
+                rr.cust_id,
+                rr.prev_limit AS rr_prev_limit,
+                rr.status AS rr_status,
+                rr.type AS rr_type,
+                rr.created_at AS rr_created_at
+            FROM final_entities fe
+            INNER JOIN reassessment_results rr
+                ON fe.final_entity_type = 'reassessment_result' AND rr.id = fe.final_entity_id
+        ),
+
+        -- CTE 5: Get RM details (statement request creator)
+        rm_details AS (
+            SELECT
+                fe.stmt_request_id,
+                p.id AS rm_id,
+                CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name) AS rm_name
+            FROM final_entities fe
+            LEFT JOIN persons p ON p.id = fe.created_by
+        ),
+
+        -- CTE 6: Get borrower details
+        borrower_details AS (
+            SELECT
+                fe.stmt_request_id,
+                b.id AS borrower_id,
+                b.cust_id AS borrower_cust_id,
+                b.biz_name AS borrower_biz_name,
+                b.reg_date AS borrower_reg_date,
+                b.tot_loans,
+                b.tot_default_loans,
+                b.crnt_fa_limit,
+                b.prev_fa_limit,
+                b.last_assessment_date,
+                b.kyc_status,
+                b.activity_status,
+                b.profile_status,
+                b.fa_status,
+                b.status AS borrower_status,
+                b.risk_category,
+                b.reg_flow_rel_mgr_id,
+                b.flow_rel_mgr_id,
+
+                -- Registered RM
+                reg_rm.id AS reg_rm_id,
+                CONCAT_WS(' ', reg_rm.first_name, reg_rm.middle_name, reg_rm.last_name) AS reg_rm_name,
+
+                -- Current RM
+                curr_rm.id AS current_rm_id,
+                CONCAT_WS(' ', curr_rm.first_name, curr_rm.middle_name, curr_rm.last_name) AS current_rm_name
+
+            FROM final_entities fe
+            INNER JOIN borrowers b
+                ON COALESCE(
+                    (SELECT l.cust_id FROM lead_details l WHERE l.stmt_request_id = fe.stmt_request_id),
+                    (SELECT r.cust_id FROM reassessment_details r WHERE r.stmt_request_id = fe.stmt_request_id)
+                ) = b.cust_id
+            LEFT JOIN persons reg_rm ON reg_rm.id = b.reg_flow_rel_mgr_id
+            LEFT JOIN persons curr_rm ON curr_rm.id = b.flow_rel_mgr_id
+        )
+
+        -- Final SELECT: Join all CTEs together
         SELECT
-            -- Statement request details
-            s.id AS stmt_request_id,
-            s.flow_req_id AS run_id,
-            s.acc_number,
-            s.alt_acc_num,
-            s.acc_prvdr_code,
-            s.status AS stmt_status,
-            s.object_key,
-            s.lambda_status,
-            DATE(s.created_at) AS created_date,
-            s.created_at,
+            fe.stmt_request_id,
+            fe.run_id,
+            fe.acc_number,
+            fe.alt_acc_num,
+            fe.acc_prvdr_code,
+            fe.stmt_status,
+            fe.object_key,
+            fe.lambda_status,
+            fe.created_date,
+            fe.created_at,
 
             -- RM details
-            p.id AS rm_id,
-            CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name) AS rm_name,
+            rm.rm_id,
+            rm.rm_name,
 
-            -- Entity information (direct from statement request)
-            s.entity AS direct_entity,
-            s.entity_id AS direct_entity_id,
+            -- Entity chain
+            fe.direct_entity,
+            fe.direct_entity_id,
+            fe.customer_statement_id,
+            fe.cs_entity,
+            fe.cs_entity_id,
+            fe.holder_name,
+            fe.distributor_code,
+            fe.acc_ownership,
+            fe.cs_status,
+            fe.cs_result,
+            fe.cs_score,
+            fe.cs_limit,
+            fe.cs_prev_limit,
+            fe.cs_assessment_date,
 
-            -- Customer statement details (if entity = 'customer_statement')
-            cs.id AS customer_statement_id,
-            cs.entity AS cs_entity,
-            cs.entity_id AS cs_entity_id,
-            cs.holder_name,
-            cs.distributor_code,
-            cs.acc_ownership,
-            cs.status AS cs_status,
-            cs.result AS cs_result,
-            cs.score AS cs_score,
-            cs.`limit` AS cs_limit,
-            cs.prev_limit AS cs_prev_limit,
-            cs.assessment_date AS cs_assessment_date,
+            -- Final entity
+            fe.final_entity_type,
+            fe.final_entity_id,
 
-            -- Final entity type (either direct or from customer_statement)
-            CASE
-                WHEN s.entity = 'customer_statement' THEN cs.entity
-                ELSE s.entity
-            END AS final_entity_type,
+            -- Customer ID
+            COALESCE(ld.cust_id, rd.cust_id) AS cust_id,
 
-            -- Final entity ID (either direct or from customer_statement)
-            CASE
-                WHEN s.entity = 'customer_statement' THEN cs.entity_id
-                ELSE s.entity_id
-            END AS final_entity_id,
+            -- Lead details
+            ld.lead_id,
+            ld.lead_mobile,
+            ld.lead_biz_name,
+            ld.lead_first_name,
+            ld.lead_last_name,
+            ld.lead_id_proof,
+            ld.lead_national_id,
+            ld.lead_location,
+            ld.lead_territory,
+            ld.lead_status,
+            ld.lead_profile_status,
+            ld.lead_score_status,
+            ld.lead_type,
+            ld.lead_date,
+            ld.lead_assessment_date,
+            ld.lead_onboarded_date,
 
-            -- Customer ID (from leads or reassessment_results)
-            COALESCE(
-                l.cust_id,
-                rr.cust_id
-            ) AS cust_id,
+            -- Reassessment details
+            rd.reassessment_id,
+            rd.rr_prev_limit,
+            rd.rr_status,
+            rd.rr_type,
+            rd.rr_created_at,
 
-            -- Lead details (if final entity = 'lead')
-            l.id AS lead_id,
-            l.mobile_num AS lead_mobile,
-            l.biz_name AS lead_biz_name,
-            l.first_name AS lead_first_name,
-            l.last_name AS lead_last_name,
-            l.id_proof_num AS lead_id_proof,
-            l.national_id AS lead_national_id,
-            l.location AS lead_location,
-            l.territory AS lead_territory,
-            l.status AS lead_status,
-            l.profile_status AS lead_profile_status,
-            l.score_status AS lead_score_status,
-            l.type AS lead_type,
-            l.lead_date,
-            l.assessment_date AS lead_assessment_date,
-            l.onboarded_date AS lead_onboarded_date,
+            -- Borrower details
+            bd.borrower_id,
+            bd.borrower_cust_id,
+            bd.borrower_biz_name,
+            bd.borrower_reg_date,
+            bd.tot_loans,
+            bd.tot_default_loans,
+            bd.crnt_fa_limit,
+            bd.prev_fa_limit,
+            bd.last_assessment_date AS borrower_last_assessment_date,
+            bd.kyc_status AS borrower_kyc_status,
+            bd.activity_status AS borrower_activity_status,
+            bd.profile_status AS borrower_profile_status,
+            bd.fa_status AS borrower_fa_status,
+            bd.borrower_status,
+            bd.risk_category,
 
-            -- Reassessment result details (if final entity = 'reassessment_result')
-            rr.id AS reassessment_id,
-            rr.prev_limit AS rr_prev_limit,
-            rr.status AS rr_status,
-            rr.type AS rr_type,
-            rr.created_at AS rr_created_at
+            -- Borrower RMs
+            bd.reg_rm_id,
+            bd.reg_rm_name,
+            bd.current_rm_id,
+            bd.current_rm_name
 
-        FROM partner_acc_stmt_requests s
+        FROM final_entities fe
+        LEFT JOIN rm_details rm ON rm.stmt_request_id = fe.stmt_request_id
+        LEFT JOIN lead_details ld ON ld.stmt_request_id = fe.stmt_request_id
+        LEFT JOIN reassessment_details rd ON rd.stmt_request_id = fe.stmt_request_id
+        LEFT JOIN borrower_details bd ON bd.stmt_request_id = fe.stmt_request_id
 
-        -- Filter early with WHERE conditions
-        WHERE
-            s.acc_prvdr_code IN ('UMTN', 'UATL')
-            AND s.created_at <= :cutoff_date
-            AND s.id <= :max_id
-
-        -- Join RM details
-        LEFT JOIN persons p ON p.id = s.created_by
-
-        -- Join customer_statement only when entity = 'customer_statement'
-        LEFT JOIN customer_statements cs
-            ON cs.id = s.entity_id
-            WHERE s.entity = 'customer_statement'
-
-        -- Join leads with optimized conditions
-        LEFT JOIN leads l
-            ON (
-                -- Direct link
-                (s.entity = 'lead' AND l.id = s.entity_id)
-                OR
-                -- Indirect link through customer_statement
-                (cs.id IS NOT NULL AND cs.entity = 'lead' AND l.id = CAST(cs.entity_id AS UNSIGNED))
-            )
-
-        -- Join reassessment_results with optimized conditions
-        LEFT JOIN reassessment_results rr
-            ON (
-                -- Direct link
-                (s.entity = 'reassessment_result' AND rr.id = s.entity_id)
-                OR
-                -- Indirect link through customer_statement
-                (cs.id IS NOT NULL AND cs.entity = 'reassessment_result' AND rr.id = CAST(cs.entity_id AS UNSIGNED))
-            )
-
-        ORDER BY s.created_at DESC
+        ORDER BY fe.created_at DESC
     """)
 
     logger.info(f"Executing query with cutoff_date={cutoff_date}, max_id={max_id}")
